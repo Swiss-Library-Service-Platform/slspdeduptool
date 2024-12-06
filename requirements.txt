@@ -1,0 +1,12 @@
+django
+pandas
+numpy
+almasru
+pymongo
+python-dotenv
+scikit-learn
+lxml
+requests
+almapiwrapper
+daphne
+whitenoise
