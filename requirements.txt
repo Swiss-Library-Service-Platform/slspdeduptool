@@ -8,5 +8,6 @@ scikit-learn
 lxml
 requests
 almapiwrapper
-daphne
-whitenoise
+asgiref
+mysqlclient
+sqlparse
