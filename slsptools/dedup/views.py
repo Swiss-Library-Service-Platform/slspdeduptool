@@ -24,7 +24,7 @@ mongo_db_nz = mongo_client['records']
 mongo_col_nz = mongo_db_nz['nz_records']
 mongo_db_tir = mongo_client['tir']
 # mongo_col_tir = mongo_db_tir['dvd']
-mongo_col_tir = mongo_db_tir['books']
+mongo_col_tir = mongo_db_tir['journal_titles']
 
 
 def index(request):
@@ -36,7 +36,7 @@ def get_local_record_ids(request):
     record_filter = request.GET.get('filter', 'all')
     queries = {'all': {},
                'possible': {'possible_matches.1': {'$exists': 1},
-                            'max_match_score': {'$gt': 0.7},
+                            # 'max_match_score': {'$gt': 0.7},
                             'matched_record': None},
                'nomatch': {'possible_matches.1': {'$exists': 0},
                            'matched_record': None},
@@ -75,7 +75,8 @@ def get_local_record_ids(request):
 
 def get_nz_rec(request, mms_id):
     rec = mongo_col_nz.find_one({'mms_id': mms_id}, {'_id': False})
-
+    if rec is None:
+        return None
     xml_rec = json_to_xml(rec)
 
     data = {'brief_rec': BriefRec(xml_rec).data,
@@ -149,6 +150,8 @@ def get_local_rec(request, rec_id):
             nz_ext_rec = get_dnb_rec(request, possible_match)
         else:
             nz_ext_rec = get_nz_rec(request, possible_match)
+        # if nz_ext_rec is None:
+        #     continue
         nz_ext_rec = json.loads(nz_ext_rec.content)
         nz_ext_rec['scores'] = tools.evaluate_similarity(rec['brief_rec'], nz_ext_rec['brief_rec'])
         nz_ext_rec['similarity_score'] = tools.get_similarity_score(rec['brief_rec'], nz_ext_rec['brief_rec'])
