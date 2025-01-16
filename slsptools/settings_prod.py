@@ -54,7 +54,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'dedup.urls'
+ROOT_URLCONF = 'slsptools.urls'
 
 TEMPLATES = [
     {
