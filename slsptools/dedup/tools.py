@@ -107,27 +107,27 @@ def xml_to_json(xml_data):
 def get_full_local_rec(rec):
     new_full_local_rec = dict()
     # BOOKS
-    # full_local_rec_fields = [
-    #     'rec_id',
-    #     'title',
-    #     'creators',
-    #     'isbn',
-    #     'publishers',
-    #     'city',
-    #     'year',
-    #     'editions',
-    #     'language',
-    #     'extent',
-    #     'parent',
-    #     'content',
-    #     'callnumber',
-    #     'keywords',
-    #     'review',
-    #     'status',
-    #     'format',
-    #     'permalink',
-    #     'category_2',
-    #     'category_1']
+    full_local_rec_fields = [
+        'rec_id',
+        'title',
+        'creators',
+        'isbn',
+        'publishers',
+        'city',
+        'year',
+        'editions',
+        'language',
+        'extent',
+        'parent',
+        'content',
+        'callnumber',
+        'keywords',
+        'review',
+        'status',
+        'format',
+        'permalink',
+        'category_2',
+        'category_1']
 
     # DVD
     # full_local_rec_fields = [
@@ -152,17 +152,18 @@ def get_full_local_rec(rec):
     #     'category_2',
     #     'category_1']
 
-    full_local_rec_fields = [
-        'rec_id',
-        'title',
-        'creators',
-        'std_identifier',
-        'publishers',
-        'city',
-        'year',
-        'language',
-        'orig_title',
-        'nb_issues']
+    # JOURNALS
+    # full_local_rec_fields = [
+    #     'rec_id',
+    #     'title',
+    #     'creators',
+    #     'std_identifier',
+    #     'publishers',
+    #     'city',
+    #     'year',
+    #     'language',
+    #     'orig_title',
+    #     'nb_issues']
 
     for f in full_local_rec_fields:
         new_full_local_rec[f] = ' / '.join(rec[f]) if type(rec[f]) == list else rec[f]

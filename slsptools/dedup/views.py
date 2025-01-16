@@ -23,8 +23,9 @@ mongo_client = pymongo.MongoClient(mongo_uri)
 mongo_db_nz = mongo_client['records']
 mongo_col_nz = mongo_db_nz['nz_records']
 mongo_db_tir = mongo_client['tir']
+mongo_col_tir = mongo_db_tir['books']
 # mongo_col_tir = mongo_db_tir['dvd']
-mongo_col_tir = mongo_db_tir['journal_titles']
+# mongo_col_tir = mongo_db_tir['journal_titles']
 
 
 def index(request):

@@ -1,4 +1,5 @@
-env
+env/
+dedupenv/
 .idea
 __pycache__
 .env
