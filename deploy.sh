@@ -11,3 +11,9 @@
 #    - Pull the last version of main branch
 #    - Update the required packages (virtualenv)
 #    - Restart the Apache server
+
+source dedupenv/bin/activate
+python3 manage.py collectstatic --noinput
+
+sudo systemctl stop apache2
+sudo systemctl start apache2
