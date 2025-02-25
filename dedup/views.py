@@ -286,7 +286,7 @@ def add_to_training_data(request):
                       'ext_nz_fullrec': nz_ext_rec['marc'],
                       'similarity_score': similarity_score,
                       'is_match': data['is_match'],
-                      'match_id': f'{local_record["rec_id"]}-{data['ext_nz_recid']}',
+                      'match_id': f'{local_record["rec_id"]}-{data["ext_nz_recid"]}',
                       'type': local_record['format']}
 
     # Update or insert a new record in the training data collection
