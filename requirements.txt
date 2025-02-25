@@ -11,3 +11,4 @@ almapiwrapper
 asgiref
 mysqlclient
 sqlparse
+dedupmarcxml

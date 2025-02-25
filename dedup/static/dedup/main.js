@@ -41,23 +41,20 @@ same fields. Full records are already
 transformed into brief records in the
 database.
 */
-const brief_rec_fields = [
+const briefrec_fields = [
   'rec_id',
   'format',
-  'title',
-  'short_title',
+  'titles',
+  'short_titles',
   'creators',
   'corp_creators',
   'publishers',
-  'date_1',
-  'date_2',
+  'years',
   'editions',
   'extent',
-  'language',
-  'isbns',
-  'issns',
-  'other_std_num',
-  'sysnums',
+  'languages',
+  'std_nums',
+  'sys_nums',
   'series',
   'parent'
 ];
@@ -68,7 +65,7 @@ const brief_rec_fields = [
 
 /* List of library records on the left with the filter */
 const RecidList = {
-  props: ['selectedLocRecid', 'recids'],
+  props: ['selectedLocRecid', 'recids', 'nbTotalRecs'],
   data() {
     return {
       // Available options. The filter itself must be configured on the backend side
@@ -80,6 +77,16 @@ const RecidList = {
 
       // Default filter
       filterSelected: 'all',
+      recidtofilter: ''
+    }
+  },
+  methods: {
+    handleIDFilterChange(event) {
+      let recidfilter = event.target.value;
+      if (recidfilter) {
+        // console.log(recidfilter);
+        this.recidfilter = recidfilter;
+      }
     }
   },
   // Component emits event so that parent component fetch the list of record
@@ -93,12 +100,18 @@ const RecidList = {
   template: `
     <h2 class="mb-0">Local IDs</h2>
     <form class="mb-2" id="recordFilter">
-    <label for="FilterOptions" class="control-label">Filter:</label>
+      <label for="FilterOptions" class="control-label">Filter:</label>
       <select v-model="filterSelected" class="form-select form-select-sm" id="FilterOptions" @change="$emit('fetchRecList', filterSelected)">
         <option v-for="option in filterOptions" :value="option.value" :selected="option.value == filterSelected">{{ option.text }}</option>
       </select>
+      <label for="IDFilter" class="control-label">Record ID:</label>
+      <input id="IDFilter" type="text" class="form-control" v-model="recidtofilter" />
+
+      <button id="nextRecords" class="btn btn-sm" type="button" @click="$emit('fetchRecList', filterSelected, null, true)">\u25B6</button>
+      <button id="searchRecords" class="btn btn-sm" type="button" @click="$emit('fetchRecList', filterSelected, recidtofilter)">\u{1F50E}</button>
+
     </form>
-    <div class="mb-2 mt-2">{{ recids.length }} records</div>
+    <div class="mb-2 mt-2">{{ nbTotalRecs }} records</div>
     <div id="recids" class="list-group">
       <a v-for="recid in recids" :class="{active: (recid.rec_id==selectedLocRecid), 'human-validated': recid.human_validated }" class="list-group-item list-group-item-action" href="#" @click="$emit('recordSelected', recid.rec_id)">{{ recid.rec_id }}</a>
     </div>
@@ -123,11 +136,11 @@ const FullLocalRec = {
   </table>`
 }
 
-/* Full NZ record or external record */
-const FullExtNzRec = {
-  props: ['fullExtNzRecData'],
+/* Full record */
+const FullRec = {
+  props: ['fullRecData'],
   template: `
-  <div id="extNzRecData" v-html="fullExtNzRecData">
+  <div class="fullrecdata" v-html="fullRecData">
   </div>`
 }
 
@@ -135,11 +148,13 @@ const FullExtNzRec = {
 const ActionSection = {
   props: ['possibleMatches', // list of records that could match with the library record
           'matchedRecord', // a record can already be defined as matched record.
-          'selectedExtNzRecRank' // rank of the record actually displayed, default is matched record
+          'selectedExtNzRecRank', // rank of the record actually displayed, default is matched record
+          'trainingDataMessage', // message to display after adding to training data
   ],
   emits: ["extNzRecSelected", // click on a possible record
           "defineMatchingRecord", // click on the select matching record button
-          "cancelMatchingRecord" // click on the cancel button
+          "cancelMatchingRecord", // click on the cancel button
+          "addToTrainingData", // click on the training data button
   ],
   template: `
     <div class="row m-2">
@@ -148,6 +163,17 @@ const ActionSection = {
     <div class="row m-2">
         <button id="local_dup" class="btn btn-sm btn-danger" @click="$emit('cancelMatchingRecord')">Cancel matching record</button>
     </div>
+    <div class="mt-4">
+      <h2 class="row m-2">Add to training data</h2>
+      <div class="row m-2 text-success" >{{ trainingDataMessage }}</div>
+      <div class="row m-2">
+          <button id="training_match" class="btn btn-sm" :class="{'btn-secondary': (selectedExtNzRecRank !== null)}" :disabled="selectedExtNzRecRank === null" @click="$emit('addToTrainingData', true)">Matching</button>
+      </div>
+      <div class="row m-2">
+          <button id="training_nomatch" class="btn btn-sm" :class="{'btn-secondary': (selectedExtNzRecRank !== null)}" :disabled="selectedExtNzRecRank === null" @click="$emit('addToTrainingData', false)">Not matching</button>
+      </div>
+    </div>
+
     <div class="row m-2">
         <table class="table mt-4" id="matched_records">
             <thead><th class="col-10">Record ID</th><th class="col-2">score</th></thead>
@@ -166,31 +192,33 @@ const ActionSection = {
 
 /* Main Vue app */
 const app = Vue.createApp({
-  components: {RecidList, FullLocalRec, FullExtNzRec, ActionSection},
+  components: {RecidList, FullRec, ActionSection},
   data() {
     return {
       selectedLocRecid: null, // selected record ID of the library
       selectedLocRec: null, // selected record data of the library
       selectedExtNzRecRank: null,
-      brief_rec_fields: brief_rec_fields,
-      recids: []
+      briefrec_fields: briefrec_fields,
+      recids: [],
+      nbTotalRecs: null,
+      trainingDataMessage: null,
     }
   },
   computed: {
     locBriefRec() {
-      return this.selectedLocRec ? this.selectedLocRec.brief_rec : null;
+      return this.selectedLocRec ? this.selectedLocRec.briefrec : null;
     },
     locFullRec() {
-      return this.selectedLocRec ? this.selectedLocRec.full_rec : null;
+      return this.selectedLocRec ? this.selectedLocRec.fullrec : null;
     },
     extNzBriefRec() {
-      return this.selectedExtNzRecRank !== null ? this.selectedLocRec.possible_matches[this.selectedExtNzRecRank].brief_rec : null;
+      return (this.selectedExtNzRecRank !== null && this.selectedLocRec.possible_matches[this.selectedExtNzRecRank] !== undefined) ? this.selectedLocRec.possible_matches[this.selectedExtNzRecRank].briefrec : null;
     },
     extNzFullRec() {
-      return this.selectedExtNzRecRank !== null ? this.selectedLocRec.possible_matches[this.selectedExtNzRecRank].full_rec : null;
+      return (this.selectedExtNzRecRank !== null && this.selectedLocRec.possible_matches[this.selectedExtNzRecRank] !== undefined) ? this.selectedLocRec.possible_matches[this.selectedExtNzRecRank].fullrec : null;
     },
     scores() {
-      return this.selectedExtNzRecRank !== null ? this.selectedLocRec.possible_matches[this.selectedExtNzRecRank].scores : null;
+      return (this.selectedExtNzRecRank !== null  && this.selectedLocRec.possible_matches[this.selectedExtNzRecRank] !== undefined) ? this.selectedLocRec.possible_matches[this.selectedExtNzRecRank].scores : null;
     },
     possibleMatches() {
       return this.selectedLocRec ? this.selectedLocRec.possible_matches : null;
@@ -206,11 +234,11 @@ const app = Vue.createApp({
 
     /* Fetch the selected record in the left list */
     recordSelected(recid) {
-
+      this.trainingDataMessage = null;
       this.selectedLocRecid = recid; // set the selected record ID
 
       // Fetch the record data in backend
-      fetch(`/dedup/locrec/${recid}`)
+      fetch(`/dedup/col/${col_name}/locrec/${recid}`)
       .then(response => response.json())
       .then(data => {
         this.selectedLocRec = data;
@@ -244,7 +272,7 @@ const app = Vue.createApp({
 
     /* Manage the select matching record button */
     defineMatchingRecord(index) {
-      fetch(`/dedup/locrec/${this.selectedLocRecid}`, {
+      fetch(`/dedup/col/${col_name}/locrec/${this.selectedLocRecid}`, {
         method: 'POST',
         headers: {"X-CSRFToken": csrf_token}, // csrf_token is a global variable and required for POST requests
         body: JSON.stringify({'matched_record': this.selectedLocRec.possible_matches[index].rec_id})
@@ -259,7 +287,7 @@ const app = Vue.createApp({
 
     /* Manage the cancel button */
     cancelMatchingRecord() {
-      fetch(`/dedup/locrec/${this.selectedLocRecid}`, {
+      fetch(`/dedup/col/${col_name}/locrec/${this.selectedLocRecid}`, {
         method: 'POST',
         headers: {"X-CSRFToken": csrf_token}, // csrf_token is a global variable and required for POST requests
         body: JSON.stringify({'matched_record': null})
@@ -268,6 +296,22 @@ const app = Vue.createApp({
         this.makeHumanValidated(this.selectedLocRecid); // set human validated flag to true
         this.selectedLocRec.matched_record = ''; // reset the matched record
         this.fetchNextLocRec(this.selectedLocRecid); // fetch the next record and display it
+      });
+    },
+
+    /* Add to training data as matched record */
+    addToTrainingData(ismatch) {
+      fetch(`/dedup/training/add`, {
+        method: 'POST',
+        headers: {"X-CSRFToken": csrf_token}, // csrf_token is a global variable and required for POST requests
+        body: JSON.stringify({'ext_nz_recid': this.selectedLocRec.possible_matches[this.selectedExtNzRecRank].rec_id,
+                              'local_recid': this.selectedLocRecid,
+                              'col_name': col_name,
+                              'is_match': ismatch})
+      })
+      .then(response => response.json())
+      .then(data => {
+        this.trainingDataMessage = data['message'];
       });
     },
 
@@ -284,7 +328,7 @@ const app = Vue.createApp({
         possible_match.similarity_score = possible_match.similarity_score.toFixed(2)
 
         // Truncate field similarity scores
-        for (let field of this.brief_rec_fields) {
+        for (let field of this.briefrec_fields) {
           if (field in possible_match['scores'] &&
               possible_match['scores'][field] !== null &&
               possible_match['scores'][field] !== 1) {
@@ -295,18 +339,28 @@ const app = Vue.createApp({
     },
 
     /* Fetch the list of record IDs according to the provided filter */
-    fetchRecList(filterSelected) {
-      let recListUrl = '/dedup/locrecids';
+    fetchRecList(filterSelected=null, recid=null, next=false) {
+      let recListUrl = `/dedup/col/${col_name}/locrecids`;
 
       // Add filter to the URL if provided
       if (filterSelected) {
         recListUrl += `?filter=${filterSelected}`;
       }
 
+      if (recid) {
+        recListUrl += recListUrl.includes('?') ? '&' : '?';
+        recListUrl += `recid=${recid}`
+      } else if (next && this.recids.length > 0) {
+        recListUrl += recListUrl.includes('?') ? '&' : '?';
+        let recid = this.recids.at(-1).rec_id;
+        recListUrl += `next=${recid}`;
+      }
+
       fetch(recListUrl)
       .then(response => response.json())
       .then(data => {
         this.recids = data['rec_ids'];
+        this.nbTotalRecs = data['nb_total_recs'];
         // Select the first record in the list to display
         if (this.recids.length > 0) {this.recordSelected(this.recids[0]['rec_id']);}
       });
@@ -322,18 +376,23 @@ const app = Vue.createApp({
   },
   template: `
     <header>
-      <div class="row mb-2">
-        <h1>SLSP dedup tool</h1>
+      <div class="row">
+        <div class="mb-2 col-10">
+          <h1>SLSP dedup tool</h1>
+        </div>
+        <div class="mb-2 col-2 text-end">
+          <a href="/dedup/logout">Logout</a>
+        </div>
       </div>
     </header>
     <div class="row">
       <aside class="col-1">
-        <recidList :recids="recids" :selectedLocRecid="selectedLocRecid" @fetch-rec-list="fetchRecList" @record-selected="recordSelected">
+        <recidList :recids="recids" :selectedLocRecid="selectedLocRecid" :nbTotalRecs="nbTotalRecs" @fetch-rec-list="fetchRecList" @record-selected="recordSelected" >
         </recidList>
       </aside>
       <main class="col-9">
         <div class="row">
-          <table class="table table-striped" id="brief_rec">
+          <table class="table table-striped" id="briefrec">
             <thead><tr>
                 <th class="col-1"></th>
                 <th class="col-5">Local brief record</th>
@@ -341,7 +400,7 @@ const app = Vue.createApp({
                 <th class="col-1">Score</th>
             </tr></thead>
             <tbody>
-                <tr v-if="locBriefRec" v-for="field in brief_rec_fields" :class="{'table-danger': (extNzBriefRec && scores[field]!==null && scores[field]<0.8) }">
+                <tr v-if="locBriefRec" v-for="field in briefrec_fields" :class="{'table-danger': (extNzBriefRec && scores[field]!==null && scores[field] >= 0.2 && scores[field] < 0.8) }">
                     <th class="text-end">{{ field }}</th>
                     <td>{{ locBriefRec[field] }}</td>
                     <td v-if="extNzBriefRec">{{ extNzBriefRec[field] }}</td>
@@ -354,19 +413,18 @@ const app = Vue.createApp({
         </div>
         <div class="row">
           <div class="col-6">
-            <fullLocalRec :full-local-rec-data="locFullRec">
-            </fullLocalRec>
+            <FullRec :full-rec-data="locFullRec">
+            </fullRec>
           </div>
           <div class="col-6">
-            <FullExtNzRec :full-ext-nz-rec-data="extNzFullRec">
-            </FullExtNzRec>
+            <FullRec :full-rec-data="extNzFullRec">
+            </FullRec>
           </div>
         </div>
       </main>
       <aside class="col-2">
-        <ActionSection :possible-matches="possibleMatches" :selected-ext-nz-rec-rank="selectedExtNzRecRank" :matched-record="matchedRecord" @ext-nz-rec-selected="extNzRecSelected" @define-matching-record="defineMatchingRecord" @cancel-matching-record="cancelMatchingRecord"></ActionSection>
+        <ActionSection :possible-matches="possibleMatches" :selected-ext-nz-rec-rank="selectedExtNzRecRank" :matched-record="matchedRecord" :training-data-message="trainingDataMessage" @ext-nz-rec-selected="extNzRecSelected" @define-matching-record="defineMatchingRecord" @cancel-matching-record="cancelMatchingRecord" @add-to-training-data="addToTrainingData"></ActionSection>
       </aside>
-    </div>
-  `
+    </div>`
 });
 

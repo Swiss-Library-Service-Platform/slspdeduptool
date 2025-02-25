@@ -1,16 +1,16 @@
 
 #recids {
     height: 600px;
-    font-size: 0.7em;
+    font-size: 0.8em;
     overflow: scroll;
 }
 
-#recordFilter select, #recordFilter label, aside div, main table, #extNzRecData {
-    font-size: 0.7em;
+#recordFilter input, select, #recordFilter label,aside div, main table, .fullrecdata {
+    font-size: 0.8em;
 }
 
 h2 {
-    font-size: 0.85em;
+    font-size: 0.9em;
 }
 
 main table th {

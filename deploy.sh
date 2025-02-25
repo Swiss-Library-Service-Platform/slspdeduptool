@@ -13,6 +13,7 @@
 #    - Restart the Apache server
 
 source dedupenv/bin/activate
+git pull
 python3 manage.py collectstatic --noinput
 
 sudo systemctl stop apache2

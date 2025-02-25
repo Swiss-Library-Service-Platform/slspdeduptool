@@ -1,10 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
+{% load static %}
+<html>
+  <head>
+    <title>SLSP dedup tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'dedup/style.css' %}">
+    <link rel="shortcut icon" type="image/png" href="{% static 'favicon.png' %}" >
+    <script src="https://unpkg.com/vue@3.2.29/dist/vue.global.js"></script>
+  </head>
+  <body>
+  <div class="container-fluid">
+    <header>
+
+
+          <div class="row mb-2">
+            <div class="col-10">
+              <h1>SLSP dedup tool</h1>
+            </div>
+            <div class="col-2 text-end">
+                {% if user.is_authenticated %}
+              <a href="{% url 'dedup:logout_view' %}" >Logout</a>
+                {% else %}
+                <a href="{% url 'dedup:login_view' %}" >Login</a>
+                    {% endif %}
+            </div>
+          </div>
+        </header>
+        <main>
+            <div class="container-fluid">
+
+                <div class="row">
+                    <div class="col-12">
+                        Available collections:
+                    </div>
+
+                </div>
+                {%for col in cols %}
+                    <div class="row">
+                        <ul class="col-lg-2 col-sm-6 list-group">
+                            <li class="list-group-item"><a href="{% url 'dedup:collection' col %}">{{ col }}</a></li>
+                        </ul>
+                    </div>
+                {%endfor%}
+            </div>
+        </main>
+    </div>
+    <script>csrf_token = "{{ csrf_token }}";</script>
+  </body>
 </html>
