@@ -132,3 +132,4 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATIC_ROOT = '/apps/webroot/htdocs/static'
+STATICFILES_DIRS = [f'{BASE_DIR}\\slsptools\\static']
