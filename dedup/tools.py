@@ -1,37 +1,76 @@
+"""
+This module provides utility functions for handling MARC records and transforming them between JSON, XML, and HTML formats.
+
+Functions:
+- json_to_marc: Converts a JSON MARC record to an HTML string.
+- json_to_xml: Transforms a JSON record into MarcXML format.
+- xml_to_json: Converts an XML MARC record to a JSON format.
+- display_briefrec: Transforms a brief record into a displayable format.
+- remove_ns: Removes namespace information from an XML element.
+"""
+
 import re
+from typing import Dict, Union
 
 from lxml import etree
-from dedupmarcxml.evaluate import evaluate_records_similarity, get_similarity_score
-from dedupmarcxml.briefrecord import RawBriefRec, XmlBriefRec, JsonBriefRec
+from dedupmarcxml import RawBriefRec, JsonBriefRec, XmlBriefRec
 
-def json_to_marc(rec):
+
+def json_to_marc(rec: Dict) -> str:
+    """
+    Transform a JSON MARC record to an HTML string.
+
+    Parameters:
+    -----------
+    rec : dict
+        The JSON MARC record to be transformed.
+
+    Returns:
+    --------
+    str
+        The HTML string representation of the MARC record.
+    """
+    # Get the data from the record, in NZ mongodb the full record
+    # is stored in the 'marc' key. In dedup database the full record
+    # is stored in the root of the record.
     data = rec['marc'] if 'marc' in rec else rec
+
+    # We store the displayable data in a list
     new_data = list()
     new_data.append(f'<strong>LDR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</strong>{data["leader"]}')
     for f_num in data:
+        # Controlfields
         if f_num.startswith('00'):
             new_data.append(f'<strong>{f_num}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</strong> {data[f_num]}')
+
+        # Datafields
         elif re.match(r'^\d{3}$', f_num):
             for field in data[f_num]:
+                # Subfields
                 subfields = ' '.join([[f'<strong>$${f}</strong> {subfield[f]}' for f in subfield][0] for subfield in field["sub"]])
 
                 new_data.append(f'<strong>{f_num}&nbsp;{field["ind1"]}&nbsp;{field["ind2"]}&nbsp;</strong> {subfields}')
 
+    # At the end we join the data and return it
     new_data = '<br>'.join(sorted(new_data, key=lambda k: 0 if k.startswith('<strong>LDR') else int(k[8:11])))
     return new_data.replace(' ', '&nbsp;')
 
-def json_to_xml(data: dict) -> etree.Element('record'):
-    """Transform json record to MarcXML version
 
-    Parameter:
-    ----------
-    data: dictionary containing the json data of the record to transform
-        into xml record. It will only work with the format data used in
-        MongoDB main records table
+def json_to_xml(data: dict) -> etree.Element('record'):
+    """
+    Transform a JSON record to MarcXML format.
+
+    Parameters:
+    -----------
+    data : dict
+        The JSON data of the record to transform into an XML
+        record. It will only work with the format data used
+        in MongoDB main records table.
 
     Returns:
     --------
-    etree.Element containing the xml record
+    etree.Element
+        An XML element containing the MarcXML record.
     """
 
     # Create the xml record
@@ -67,14 +106,20 @@ def json_to_xml(data: dict) -> etree.Element('record'):
     record[:] = sorted(record, key=lambda field_or_contr: field_or_contr.get('tag', '000'))
     return record
 
-def xml_to_json(xml_data):
+
+def xml_to_json(xml_data: etree.Element) -> Dict:
     """
-    Convert to JSON record for MongoDB
+    Convert an XML MARC record to a JSON format suitable for MongoDB.
+
+    Parameters
+    ----------
+    xml_data : etree.Element
+        The XML data of the MARC record to be converted.
 
     Returns
     -------
-    JsonRecord
-        JSON record
+    dict
+        A dictionary containing the JSON representation of the MARC record.
     """
     json_record = dict({'marc': dict()})
 
@@ -105,8 +150,26 @@ def xml_to_json(xml_data):
         json_record['marc'][tag].append(datafield_data)
     return json_record
 
-def display_briefrec(briefrec):
-    """Transform a brief record to a displayable format"""
+
+def display_briefrec(briefrec: Union[RawBriefRec, JsonBriefRec, XmlBriefRec]) -> dict:
+    """
+    Transform a brief record into a displayable format.
+
+    This function takes a brief record and converts it into a dictionary
+    where each key corresponds to a field in the brief record, and the value
+    is a string representation of that field, suitable for display purposes.
+
+    Parameters:
+    -----------
+    briefrec : Union[RawBriefRec, JsonBriefRec, XmlBriefRec]
+        The brief record to be transformed.
+
+    Returns:
+    --------
+    dict
+        A dictionary where each key is a field from the brief record and the value
+        is a string representation of that field.
+    """
     data = dict()
     for bk in briefrec.data.keys():
         if type(briefrec.data[bk])==list:
@@ -150,117 +213,20 @@ def display_briefrec(briefrec):
             data[bk] = briefrec.data[bk]
     return data
 
-# def get_full_local_rec(rec):
-#     new_full_local_rec = dict()
-#     # # BOOKS
-#     # full_local_rec_fields = [
-#     #     'rec_id',
-#     #     'title',
-#     #     'creators',
-#     #     'isbn',
-#     #     'publishers',
-#     #     'city',
-#     #     'year',
-#     #     'editions',
-#     #     'language',
-#     #     'extent',
-#     #     'parent',
-#     #     'content',
-#     #     'callnumber',
-#     #     'keywords',
-#     #     'review',
-#     #     'status',
-#     #     'format',
-#     #     'permalink',
-#     #     'category_2',
-#     #     'category_1']
-#
-#     # DVD
-#     # full_local_rec_fields = [
-#     #     'rec_id',
-#     #     'title',
-#     #     'creators',
-#     #     'std_identifer',
-#     #     'publishers',
-#     #     'city',
-#     #     'year',
-#     #     'editions',
-#     #     'language',
-#     #     'duration',
-#     #     'parent',
-#     #     'content',
-#     #     'callnumber',
-#     #     'keywords',
-#     #     'review',
-#     #     'status',
-#     #     'format',
-#     #     'permalink',
-#     #     'category_2',
-#     #     'category_1']
-#
-#     # JOURNALS
-#     # full_local_rec_fields = [
-#     #     'rec_id',
-#     #     'title',
-#     #     'creators',
-#     #     'std_identifier',
-#     #     'publishers',
-#     #     'city',
-#     #     'year',
-#     #     'language',
-#     #     'orig_title',
-#     #     'nb_issues']
-#
-#     for f in full_local_rec_fields:
-#         new_full_local_rec[f] = ' / '.join(rec[f]) if type(rec[f]) == list else rec[f]
-#
-#     return new_full_local_rec
-
-
-# def evaluate_format(format1: str, format2: str) -> float:
-#     """evaluate_format(format1: str, format2: str) -> float
-#     Return the result of the evaluation of similarity of two formats
-#
-#     If format is the same it returns 1, 0 otherwise
-#
-#     :param format1: format to compare
-#     :param format2: format to compare
-#
-#     :return: similarity score between two formats as float"""
-#     format1 = format1.split('/')
-#     format2 = format2.split('/')
-#     leader1 = format1[0].strip()
-#     leader2 = format2[0].strip()
-#
-#     # Compare leader => 0.4 max
-#     score = 0.4 if leader1 == leader2 else 0
-#
-#     # Compare fields 33X => 0.6 max for the 3 fields
-#     f33x_1 = format1[1].strip().split(';')
-#     f33x_2 = format2[1].strip().split(';')
-#     for i in range(len(f33x_1)):
-#         if len(f33x_2) > i:
-#             if f33x_1[i] == f33x_2[i]:
-#                 score += 0.2
-#             elif f33x_1[i].strip() == '' or f33x_2[i].strip() == '':
-#                 score += 0.1
-#     if score >= 0.4:
-#         score = 1
-#     if format2[2].strip() != 'p':
-#         score = 0
-#
-#     return score
-#
-#
-# def evaluate_similarity(rec1, rec2):
-#     raw_scores = evaluate_records_similarity(rec1, rec2)
-#     return get_similarity_score(raw_scores)
 
 def remove_ns(data: etree.Element) -> etree.Element:
-    """Remove namespace from XML data
-    :param data: `etree.Element` object with xml data
-    :return: `etree.Element` without namespace information
-    :rtype:
+    """
+    Remove namespace from XML data.
+
+    Parameters:
+    -----------
+    data : etree.Element
+        The XML element from which the namespace should be removed.
+
+    Returns:
+    --------
+    etree.Element
+        The XML element without namespace information.
     """
     temp_data = etree.tostring(data).decode()
     temp_data = re.sub(r'\s?xmlns="[^"]+"', '', temp_data).encode()

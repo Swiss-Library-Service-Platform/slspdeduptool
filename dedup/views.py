@@ -1,15 +1,23 @@
-from django.http import HttpResponse, JsonResponse
+"""
+This module contains the views of the deduplication application.
+"""
+# Django imports
+from django.http import HttpResponse, JsonResponse, HttpRequest
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 
+# Standard library imports
 import pymongo
 import os
 import json
 
+# Local imports
 from . import tools
 
+# Used for dedup tasks
+# https://dedupmarcxml.readthedocs.io
 from dedupmarcxml.evaluate import evaluate_records_similarity, get_similarity_score
 from dedupmarcxml.briefrecord import RawBriefRec, JsonBriefRec
 
@@ -21,43 +29,76 @@ from dedupmarcxml.briefrecord import RawBriefRec, JsonBriefRec
 # from almasru import config_log
 
 # Configure access to MongoDB databases
+
+# Get the uri to connect to the MongoDB databases, it has all the required
+# rights to use the following databases: records, dedup
 mongo_uri = os.getenv('mongodb_dedup_uri')
 mongo_client = pymongo.MongoClient(mongo_uri)
 
+# We can already define the collection for the NZ records
 mongo_db_nz = mongo_client[os.getenv('nz_db')]
 mongo_col_nz = mongo_db_nz[os.getenv('nz_db_col')]
+
+# As the collection is related the material type, we define globally only the database
+# for each material type
 mongo_db_dedup = mongo_client[os.getenv('dedup_db')]
 
 
-def index(request):
-    """Display the list of collections available in the dedup database
+def index(request: HttpRequest) -> HttpResponse:
+    """
+    Display the list of collections available in the dedup database
 
-    This view is unprotected and can be accessed by anyone. It displays the list of collections."""
+    This view is unprotected and can be accessed by anyone. It displays the
+    list of collections. The application is able to dedup several collections
+    without any hard coding. We display all collections of `dedup_db` except
+    the ones starting with 'NZ_' and the training data collection.
+    """
+    # Fetch collections names from the database
     cols = [col for col in mongo_db_dedup.list_collection_names()
             if col.startswith('NZ_') is False and col != 'training_data']
+
+    # Render the template with the list of collections
     return render(request, 'dedup/index.html', {"cols": cols})
 
 
 @login_required
-def collection(request, col_name):
+def collection(request: HttpRequest, col_name: str) -> HttpResponse:
     """Display the first records of a collection
 
     This view is protected and can only be accessed by authenticated users.
-    It displays the first records of a collection. It's the main view to start the deduplication process."""
-    if col_name not in [col for col in mongo_db_dedup.list_collection_names() if col.startswith('NZ_') is False]:
-        return HttpResponse(f'Collection "{col_name}" not found')
-    mongo_col_dedup = mongo_db_dedup[col_name]
-    mms_ids = mongo_col_dedup.find({}, {'_id': False, 'rec_id': True}).limit(10)
+    It displays the first records of a collection.
+    It's the main view of the deduplication process.
+    """
 
-    return render(request, 'dedup/collection.html', {"mms_ids": mms_ids, "col_name": col_name})
+    # We check that the collection name provided in url exists
+    if col_name not in [col for col in mongo_db_dedup.list_collection_names()
+                        if col.startswith('NZ_') is False]:
+        return HttpResponse(f'Collection "{col_name}" not found')
+
+    return render(request, 'dedup/collection.html', {"col_name": col_name})
 
 
 @login_required
-def get_local_record_ids(request, col_name):
-    """Get the record ids for a collection with a filter
+def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
+    """
+    Get the record ids for a collection with a filter.
 
     This view is an API returning the record ids for a collection with a filter.
-    sorting is according to _id field and not rec_id
+    Sorting is according to the `_id` field and not `rec_id`.
+
+    Treatment for duplicated matches is special with a distinct pipeline.
+
+    Parameters:
+    -----------
+    request : HttpRequest
+        The HTTP request object containing the filter parameters.
+    col_name : str
+        The name of the collection to query.
+
+    Returns:
+    --------
+    JsonResponse
+        A JSON response containing the record ids and the total number of records.
     """
 
     # Get the filter from the request, using parameters
@@ -92,107 +133,93 @@ def get_local_record_ids(request, col_name):
         if rec is not None:
             recids_query.update({'_id': {'$gte': rec['_id']}})
 
-    pipeline = [
-        {"$match": recids_query},  # Filtre les documents selon ta requête
-        {"$project": {  # Sélectionne les champs souhaités
-            "_id": False,
-            "rec_id": True,
-            "human_validated": True,
-            "matched_record": True
-        }},
-        {"$facet": {  # split data
-            "total": [  # Count nb documents
-                {"$count": "total"}
-            ],
-            "results": [  # limit results to 20
-                {"$limit": 20}
-            ]
-        }}
-    ]
+    if record_filter != 'duplicatematch':
+        # Spectial pipeline for duplicated matches
+        pipeline = [
+            {"$match": recids_query},  # Filtre les documents selon ta requête
+            {"$project": {  # Sélectionne les champs souhaités
+                "_id": False,
+                "rec_id": True,
+                "human_validated": True,
+                "matched_record": True
+            }},
+            {"$facet": {  # split data
+                "total": [  # Count nb documents
+                    {"$count": "total"}
+                ],
+                "results": [  # limit results to 20
+                    {"$limit": 20}
+                ]
+            }}
+        ]
+
+    else:
+        # Normal pipeline for other filters
+        pipeline = [
+            # Step 1: Filter documents where matched_record is neither None nor an empty string
+            {"$match": {"matched_record": {"$nin": [None, ""]}}},
+
+            # Step 2: Group by matched_record and count occurrences
+            {"$group": {
+                "_id": "$matched_record",
+                "count": {"$sum": 1},  # Count occurrences of each matched_record
+                "documents": {"$push": "$$ROOT"}  # Store original documents in an array
+            }},
+
+            # Step 3: Filter groups where count > 1 (non-unique values)
+            {"$match": {"count": {"$gt": 1}}},
+
+            # Step 4: Unwind the documents array to restore one document per row
+            {"$unwind": "$documents"},
+
+            # Step 5: Project the desired fields
+            {"$replaceRoot": {"newRoot": "$documents"}},  # Replace the root with the original document
+            {"$project": {
+                "_id": False,
+                "rec_id": True,
+                "human_validated": True,
+                "matched_record": True
+            }},
+            {"$sort": {"matched_record": 1}},
+
+            # Step 6: Use $facet to split the results
+            {"$facet": {
+                "total": [{"$count": "total"}],  # Count the total number of filtered documents
+                "results": [{"$limit": 20}]  # Limit the results to 20 documents
+            }}
+        ]
+
+    # Execute the query
     result = list(mongo_db_dedup[col_name].aggregate(pipeline))
     recs = result[0]['results']
     nb_total_recs = result[0]['total'][0]['total'] if result[0]['total'] else 0
-    if record_filter != 'duplicatematch':
-        return JsonResponse({'rec_ids': [{'rec_id': rec['rec_id'],
-                                          'human_validated': rec.get('human_validated', False)} for rec in recs],
-                             'nb_total_recs': nb_total_recs})
-    else:
-        matches = dict()
-        recs_ids = [{
-            'rec_id': rec['rec_id'],
-            'human_validated': rec['human_validated'],
-            'matched_record': rec['matched_record']
-        } for rec in recs]
-        for rec in recs_ids:
-            if rec['matched_record'] in matches:
-                matches[rec['matched_record']].append(rec['rec_id'])
-            else:
-                matches[rec['matched_record']] = [rec['rec_id']]
-        duplicate_recids = []
-        for match in matches:
-            if len(matches[match]) > 1:
-                duplicate_recids += matches[match]
-        recs_ids = [rec for rec in recs_ids if rec['rec_id'] in duplicate_recids]
-        rec_ids = sorted(recs_ids, key=lambda x: x['matched_record'])
-        return JsonResponse({'rec_ids': rec_ids, 'nb_total_recs': nb_total_recs})
-
-
-@login_required
-def get_nz_rec(_, mms_id, jsonresponse=True):
-    """This view is an API return NZ record with a given MMS ID
-
-    It can return a JsonResponse for the API or a dict for
-    internal use of the view.
-    """
-    rec = mongo_col_nz.find_one({'mms_id': mms_id}, {'_id': False})
-    if rec is None:
-        return None
-
-    rec = dict(rec)
-    data = {'briefrec': JsonBriefRec(rec).data,
-            'fullrec': tools.json_to_marc(rec)}
-
-    return JsonResponse(data) if jsonresponse is True else data
-
-
-# @login_required
-# def get_dnb_rec(request, rec_id):
-#     if rec_id.startswith('(DNB)'):
-#         rec_id = rec_id[5:]
-#     # Define the parameters for the search
-#     params = {
-#         "version": "1.1",
-#         "operation": "searchRetrieve",
-#         "query": f"identifier={rec_id}",
-#         "recordSchema": "MARC21-xml"
-#     }
-#     nsmap = {'srw': 'http://www.loc.gov/zing/srw/',
-#              'm': 'http://www.loc.gov/MARC21/slim',
-#              'diag': 'http://www.loc.gov/zing/srw/diagnostic/'}
-#
-#     base_url = "https://services.dnb.de/sru/dnb"
-#
-#     # Send the request
-#     response = requests.get(base_url, params=params)
-#     xml_rec = XmlData(response.content)
-#
-#     records = [XmlData(etree.tostring(tools.remove_ns(r))) for r in
-#                xml_rec.content.findall('.//m:record', namespaces=nsmap)]
-#
-#     rec = records[0] if len(records) > 0 else None
-#
-#     data = {'briefrec': BriefRec(xml_rec.content).data,
-#             'fullrec': tools.json_to_marc(tools.xml_to_json(rec.content))}
-#
-#     return JsonResponse(data)
+    return JsonResponse({'rec_ids': [{'rec_id': rec['rec_id'],
+                                      'human_validated': rec.get('human_validated', False)} for rec in recs],
+                         'nb_total_recs': nb_total_recs})
 
 
 @login_required
 def local_rec(request, rec_id=None, col_name=None):
-    """Entry point when making an action on a local record
+    """
+    Entry point when making an action on a local record.
 
-    This view is an API that can be used to get or post a local record. With a post request, the system will validate
+    This view is an API that can be used to get or post a local
+    record. With a post request, the system will validate
     matching records or cancel the validation.
+
+    Parameters
+    ----------
+    request : HttpRequest
+        The HTTP request object.
+    rec_id : str, optional
+        The record ID of the local record.
+    col_name : str, optional
+        The name of the collection.
+
+    Returns
+    -------
+    HttpResponse
+        The HTTP response object.
     """
     if request.method == 'GET':
         return get_local_rec(request, rec_id, col_name)
@@ -202,8 +229,28 @@ def local_rec(request, rec_id=None, col_name=None):
 
 
 @login_required
-def get_local_rec(request, rec_id, col_name, jsonresponse=True):
-    """Get a local record with its possible matches"""
+def get_local_rec(_, rec_id, col_name, jsonresponse=True):
+    """Get a local record with its possible matches
+
+    Format of the response is:
+        {
+            "briefrec": "Brief record in a human-readable format",
+            "fullrec": "Marc21",  # Full record in Marc21 format
+            "matched_record": "Rec_id of the matched record",
+            "possible_matches": [
+                {
+                    "briefrec": "Brief record in a human-readable format",
+                    "fullrec": "Marc21",  # Full record in Marc21 format
+                    "scores": {"titles": 0.8, "creators": 0.5, ...},  # Similarity scores
+                    "similarity_score": 0.68,  # Overall similarity score
+                    "rec_id": "Rec_id of the possible match"
+                },
+                ...
+            ]
+        }
+
+    Idea is to iterate the possible matches and get the data from the database.
+    """
 
     # Get the record from the database
     rec = mongo_db_dedup[col_name].find_one({'rec_id': rec_id}, {'_id': False})
@@ -221,21 +268,28 @@ def get_local_rec(request, rec_id, col_name, jsonresponse=True):
     if rec.get('matched_record') is not None:
         rec_data['matched_record'] = rec['matched_record']
 
-        # # We need also to add the matched record to the possible matches
-        # possible_matches = [rec['matched_record']] + possible_matches
-
+    # Get data of possible matches
     for possible_match in possible_matches:
 
         # if possible_match.startswith('(DNB)'):
         #     nz_ext_data = get_dnb_rec(request, possible_match)
         # else:
-        nz_ext_data = get_nz_rec(request, possible_match, jsonresponse=False)
 
-        nz_briefrec = RawBriefRec(nz_ext_data['briefrec'])
-        nz_ext_data['briefrec'] = tools.display_briefrec(nz_briefrec)
-        nz_ext_data['scores'] = evaluate_records_similarity(briefrec, nz_briefrec)
-        nz_ext_data['similarity_score'] = get_similarity_score(nz_ext_data['scores'])
-        nz_ext_data['rec_id'] = possible_match
+        # Get the NZ record from the database
+        rec = mongo_col_nz.find_one({'mms_id': possible_match}, {'_id': False})
+        if rec is None:
+            continue
+
+        # Prepare the dict with the data of the possible match
+        rec = dict(rec)
+
+        nz_briefrec = JsonBriefRec(rec)
+        scores = evaluate_records_similarity(briefrec, nz_briefrec)
+        nz_ext_data = {'briefrec': tools.display_briefrec(nz_briefrec),
+                       'fullrec': tools.json_to_marc(rec),
+                       'scores': scores,
+                       'similarity_score': get_similarity_score(scores),
+                       'rec_id': possible_match}
         rec_data['possible_matches'].append(nz_ext_data)
 
     return JsonResponse(rec_data) if jsonresponse is True else rec_data
@@ -333,8 +387,33 @@ def logout_view(request):
     return redirect('dedup:index')
 
 
-# def set_matched_record(request, rec_id, matched_record):
-#     if request.method != 'POST':
-#         return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
-#     mongo_col_tir.update_one({'rec_id': rec_id}, {'$set': {'matched_record': matched_record}})
-#     return JsonResponse({'status': 'ok'})
+# @login_required
+# def get_dnb_rec(request, rec_id):
+#     if rec_id.startswith('(DNB)'):
+#         rec_id = rec_id[5:]
+#     # Define the parameters for the search
+#     params = {
+#         "version": "1.1",
+#         "operation": "searchRetrieve",
+#         "query": f"identifier={rec_id}",
+#         "recordSchema": "MARC21-xml"
+#     }
+#     nsmap = {'srw': 'http://www.loc.gov/zing/srw/',
+#              'm': 'http://www.loc.gov/MARC21/slim',
+#              'diag': 'http://www.loc.gov/zing/srw/diagnostic/'}
+#
+#     base_url = "https://services.dnb.de/sru/dnb"
+#
+#     # Send the request
+#     response = requests.get(base_url, params=params)
+#     xml_rec = XmlData(response.content)
+#
+#     records = [XmlData(etree.tostring(tools.remove_ns(r))) for r in
+#                xml_rec.content.findall('.//m:record', namespaces=nsmap)]
+#
+#     rec = records[0] if len(records) > 0 else None
+#
+#     data = {'briefrec': BriefRec(xml_rec.content).data,
+#             'fullrec': tools.json_to_marc(tools.xml_to_json(rec.content))}
+#
+#     return JsonResponse(data)
