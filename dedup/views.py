@@ -121,10 +121,17 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
 
     # Used with next button
     if next_record is not None:
-        # Need to find the _id of the record with rec_id
-        rec = mongo_db_dedup[col_name].find_one({'rec_id': next_record}, {'_id': True})
-        if rec is not None:
-            recids_query.update({'_id': {'$gt': rec['_id']}})
+        rec = mongo_db_dedup[col_name].find_one({'rec_id': next_record},
+                                                {'_id': True, 'matched_record': True})
+        if record_filter != 'duplicatematch':
+            # Need to find the _id of the record with rec_id
+            if rec is not None:
+                recids_query.update({'_id': {'$gt': rec['_id']}})
+
+        else:
+            if rec is not None and rec.get('matched_record') is not None:
+                # Add filter for duplicated matches to get the next record
+                recids_query.update({'matched_record': {'$gte': rec['matched_record']}})
 
     # Used with input field for recid
     if recid is not None:
@@ -148,7 +155,7 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
                     {"$count": "total"}
                 ],
                 "results": [  # limit results to 20
-                    {"$limit": 20}
+                    {"$limit": 30}
                 ]
             }}
         ]
@@ -158,6 +165,7 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
         pipeline = [
             # Step 1: Filter documents where matched_record is neither None nor an empty string
             {"$match": {"matched_record": {"$nin": [None, ""]}}},
+            {"$match": recids_query},
 
             # Step 2: Group by matched_record and count occurrences
             {"$group": {
@@ -185,7 +193,7 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
             # Step 6: Use $facet to split the results
             {"$facet": {
                 "total": [{"$count": "total"}],  # Count the total number of filtered documents
-                "results": [{"$limit": 20}]  # Limit the results to 20 documents
+                "results": [{"$limit": 30}]  # Limit the results to 20 documents
             }}
         ]
 
