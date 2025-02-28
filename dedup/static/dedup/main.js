@@ -113,7 +113,7 @@ const RecidList = {
     </form>
     <div class="mb-2 mt-2">{{ nbTotalRecs }} records</div>
     <div id="recids" class="list-group">
-      <a v-for="recid in recids" :class="{active: (recid.rec_id==selectedLocRecid), 'human-validated': recid.human_validated }" class="list-group-item list-group-item-action" href="#" @click="$emit('recordSelected', recid.rec_id)">{{ recid.rec_id }}</a>
+      <a v-for="recid in recids" :class="{active: (recid.rec_id==selectedLocRecid), 'human-validated': recid.human_validated, 'list-group-item-dark': recid.color }" class="list-group-item list-group-item-action" href="#" @click="$emit('recordSelected', recid.rec_id)">{{ recid.rec_id }}</a>
     </div>
   `
 };

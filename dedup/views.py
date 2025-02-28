@@ -136,9 +136,13 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
     # Used with input field for recid
     if recid is not None:
         # Need to find the _id of the record with rec_id
-        rec = mongo_db_dedup[col_name].find_one({'rec_id': recid}, {'_id': True})
-        if rec is not None:
+        rec = mongo_db_dedup[col_name].find_one({'rec_id': recid},
+                                                {'_id': True, 'matched_record': True})
+        if rec is not None and record_filter != 'duplicatematch':
             recids_query.update({'_id': {'$gte': rec['_id']}})
+        elif rec is not None and record_filter == 'duplicatematch':
+            print(rec)
+            recids_query.update({'matched_record': {'$gte':rec['matched_record']}})
 
     if record_filter != 'duplicatematch':
         # Spectial pipeline for duplicated matches
@@ -181,7 +185,38 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
             {"$match": {"count": {"$gt": 1}}},
 
             # Step 4: Unwind the documents array to restore one document per row
+            {
+                "$setWindowFields": {
+                    "sortBy": {"_id": 1},  # Sort groups by _id (or another field)
+                    "output": {
+                        "groupRank": {
+                            "$rank": {}  # Assign a rank to each group
+                        }
+                    }
+                }
+            },
+            {
+                "$set": {
+                    "color": {
+                        "$cond": {
+                            "if": {"$eq": [{"$mod": ["$groupRank", 2]}, 0]},  # Check if rank is even
+                            "then": True,  # If even, set to true
+                            "else": False  # If odd, set to false
+                        }
+                    }
+                }
+            },
+
+            # Step 3: Unwind the documents array to restore one document per row
             {"$unwind": "$documents"},
+
+            # Step 4: Add the "groupRank" field to each document
+            {
+                "$set": {
+                    "documents.color": "$color"  # Add the group rank to each document
+                }
+            },
+
 
             # Step 5: Project the desired fields
             {"$replaceRoot": {"newRoot": "$documents"}},  # Replace the root with the original document
@@ -189,8 +224,12 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
                 "_id": False,
                 "rec_id": True,
                 "human_validated": True,
-                "matched_record": True
+                "matched_record": True,
+                "color": True
             }},
+            {"$match": recids_query},
+            {"$sort": {"matched_record": 1}},
+
 
             # Step 6: Use $facet to split the results
             {"$facet": {
@@ -203,8 +242,10 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
     result = list(mongo_db_dedup[col_name].aggregate(pipeline))
     recs = result[0]['results']
     nb_total_recs = result[0]['total'][0]['total'] if result[0]['total'] else 0
-    return JsonResponse({'rec_ids': [{'rec_id': rec['rec_id'],
-                                      'human_validated': rec.get('human_validated', False)} for rec in recs],
+    return JsonResponse({'rec_ids': [{'rec_id': r['rec_id'],
+                                      'human_validated': r.get('human_validated', False),
+                                      'color': r.get('color', False),
+                                      'matched_record': r.get('matched_record', None)} for r in recs],
                          'nb_total_recs': nb_total_recs})
 
 
