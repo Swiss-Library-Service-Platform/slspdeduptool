@@ -155,7 +155,7 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
                     {"$count": "total"}
                 ],
                 "results": [  # limit results to 20
-                    {"$limit": 30}
+                    {"$limit": 300}
                 ]
             }}
         ]
@@ -163,8 +163,11 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
     else:
         # Normal pipeline for other filters
         pipeline = [
+
+            # Step 0: Sort by matched_record
+            {"$sort": {"matched_record": 1}},
+
             # Step 1: Filter documents where matched_record is neither None nor an empty string
-            {"$match": {"matched_record": {"$nin": [None, ""]}}},
             {"$match": recids_query},
 
             # Step 2: Group by matched_record and count occurrences
@@ -188,12 +191,11 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
                 "human_validated": True,
                 "matched_record": True
             }},
-            {"$sort": {"matched_record": 1}},
 
             # Step 6: Use $facet to split the results
             {"$facet": {
                 "total": [{"$count": "total"}],  # Count the total number of filtered documents
-                "results": [{"$limit": 30}]  # Limit the results to 20 documents
+                "results": [{"$limit": 300}]  # Limit the results to 20 documents
             }}
         ]
 
