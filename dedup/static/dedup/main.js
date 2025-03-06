@@ -99,7 +99,7 @@ const RecidList = {
   // a review
   template: `
     <h2 class="mb-0">Local IDs</h2>
-    <form class="mb-2" id="recordFilter">
+    <form class="mb-2" id="recordFilter" @submit.prevent="$emit('fetchRecList', filterSelected, recidtofilter)">
       <label for="FilterOptions" class="control-label">Filter:</label>
       <select v-model="filterSelected" class="form-select form-select-sm" id="FilterOptions" @change="$emit('fetchRecList', filterSelected)">
         <option v-for="option in filterOptions" :value="option.value" :selected="option.value == filterSelected">{{ option.text }}</option>
