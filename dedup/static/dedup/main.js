@@ -408,7 +408,7 @@ const app = Vue.createApp({
           <h1>SLSP dedup tool</h1>
         </div>
         <div class="mb-2 col-2 text-end">
-          <a href="/dedup/logout">Logout</a>
+          <a href="/dedup">Home</a>&nbsp;&nbsp;<a href="/dedup/logout">Logout</a>
         </div>
       </div>
     </header>
