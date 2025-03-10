@@ -280,7 +280,7 @@ def local_rec(request, rec_id=None, col_name=None):
 
 
 @login_required
-def get_local_rec(_, rec_id, col_name, jsonresponse=True):
+def get_local_rec(request, rec_id, col_name, jsonresponse=True):
     """Get a local record with its possible matches
 
     Format of the response is:
@@ -302,6 +302,9 @@ def get_local_rec(_, rec_id, col_name, jsonresponse=True):
 
     Idea is to iterate the possible matches and get the data from the database.
     """
+
+    # Get the model used to calculate the similarity score
+    selected_model = request.GET.get('selectedModel', 'mean')
 
     # Get the record from the database
     rec = mongo_db_dedup[col_name].find_one({'rec_id': rec_id}, {'_id': False})
@@ -339,7 +342,7 @@ def get_local_rec(_, rec_id, col_name, jsonresponse=True):
         nz_ext_data = {'briefrec': tools.display_briefrec(nz_briefrec),
                        'fullrec': tools.json_to_marc(rec),
                        'scores': scores,
-                       'similarity_score': get_similarity_score(scores),
+                       'similarity_score': get_similarity_score(scores, method=selected_model),
                        'rec_id': possible_match}
         rec_data['possible_matches'].append(nz_ext_data)
 
@@ -369,6 +372,9 @@ def add_to_training_data(request):
     # Get the data from the request, it contains the local record id, the NZ record, id and the decision of the user
     data = json.loads(request.body)
 
+    # Get the model used to calculate the similarity score
+    selected_model = data.get('selectedModel', 'mean')
+
     # Get the local record from the database
     local_record = mongo_db_dedup[data['col_name']].find_one({'rec_id': data['local_recid']}, {'_id': False})
     briefrec = RawBriefRec(local_record['briefrec'])
@@ -383,7 +389,7 @@ def add_to_training_data(request):
 
     # Calculate the similarity score
     scores = evaluate_records_similarity(briefrec, nz_briefrec)
-    similarity_score = get_similarity_score(scores)
+    similarity_score = get_similarity_score(scores, method=selected_model)
 
     # Preparation of the document with the training data
     # We use the json version of the full records

@@ -190,9 +190,26 @@ const ActionSection = {
     </div>`
 }
 
+const SelectEvaluationModel = {
+  data() {
+    return {
+      modelOptions: ['mean',
+                     'random_forest_music'],
+      modelSelected: 'mean' // default
+  }},
+  emits: ["defineEvaluationModel"],
+  template: `<h2 class="mb-0">Evaluation models</h2>
+    <form class="mb-2" id="selectModel">
+      <label for="modelOptions" class="control-label">Current model:</label>
+      <select v-model="modelSelected" class="form-select form-select-sm" id="modelOptions" @change="$emit('defineEvaluationModel', modelSelected)">
+        <option v-for="option in modelOptions" :value="option" :selected="option == modelSelected">{{ option }}</option>
+      </select>
+    </form>`
+}
+
 /* Main Vue app */
 const app = Vue.createApp({
-  components: {RecidList, FullRec, ActionSection},
+  components: {RecidList, FullRec, ActionSection, SelectEvaluationModel},
   data() {
     return {
       selectedLocRecid: null, // selected record ID of the library
@@ -202,6 +219,7 @@ const app = Vue.createApp({
       recids: [],
       nbTotalRecs: null,
       trainingDataMessage: null,
+      selectedModel: 'mean'
     }
   },
   computed: {
@@ -238,7 +256,7 @@ const app = Vue.createApp({
       this.selectedLocRecid = recid; // set the selected record ID
 
       // Fetch the record data in backend
-      fetch(`/dedup/col/${col_name}/locrec/${recid}`)
+      fetch(`/dedup/col/${col_name}/locrec/${recid}?selectedModel=${this.selectedModel}`)
       .then(response => response.json())
       .then(data => {
         this.selectedLocRec = data;
@@ -307,7 +325,8 @@ const app = Vue.createApp({
         body: JSON.stringify({'ext_nz_recid': this.selectedLocRec.possible_matches[this.selectedExtNzRecRank].rec_id,
                               'local_recid': this.selectedLocRecid,
                               'col_name': col_name,
-                              'is_match': ismatch})
+                              'is_match': ismatch,
+                              'selectedModel': this.selectedModel})
       })
       .then(response => response.json())
       .then(data => {
@@ -372,6 +391,14 @@ const app = Vue.createApp({
       if (index < this.recids.length - 1) {
         this.recordSelected(this.recids[index + 1].rec_id);
       }
+    },
+
+    /* Define the evaluation model */
+    defineEvaluationModel(model) {
+      this.selectedModel = model;
+      if (this.selectedLocRecid) {
+        this.recordSelected(this.selectedLocRecid);
+      }
     }
   },
   template: `
@@ -424,6 +451,7 @@ const app = Vue.createApp({
       </main>
       <aside class="col-2">
         <ActionSection :possible-matches="possibleMatches" :selected-ext-nz-rec-rank="selectedExtNzRecRank" :matched-record="matchedRecord" :training-data-message="trainingDataMessage" @ext-nz-rec-selected="extNzRecSelected" @define-matching-record="defineMatchingRecord" @cancel-matching-record="cancelMatchingRecord" @add-to-training-data="addToTrainingData"></ActionSection>
+        <SelectEvaluationModel @defineEvaluationModel = "defineEvaluationModel"></SelectEvaluationModel>
       </aside>
     </div>`
 });

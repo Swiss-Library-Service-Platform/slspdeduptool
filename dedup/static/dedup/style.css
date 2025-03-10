@@ -5,7 +5,7 @@
     overflow: scroll;
 }
 
-#recordFilter input, select, #recordFilter label,aside div, main table, .fullrecdata {
+#recordFilter input, select, #recordFilter label,aside div, main table, .fullrecdata, #selectModel {
     font-size: 0.8em;
 }
 
