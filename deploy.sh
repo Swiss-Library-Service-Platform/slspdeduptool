@@ -22,7 +22,7 @@ git pull
 
 # Check if the user wants to update the environment
 if [[ $1 == "--update-env" ]]; then
-    pip install -r requirements.txt
+    pip install --upgrade -r requirements.txt
 fi
 
 # Collect static files in root static folder

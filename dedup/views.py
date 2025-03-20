@@ -108,10 +108,10 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
 
     # Define the queries for the different filters
     queries = {'all': {},
-               'possible': {'possible_matches.1': {'$exists': 1},
+               'possible': {'possible_matches.0': {'$exists': 1},
                             # 'max_match_score': {'$gt': 0.7},
                             'matched_record': None},
-               'nomatch': {'possible_matches.1': {'$exists': 0},
+               'nomatch': {'possible_matches.0': {'$exists': 0},
                            'matched_record': None},
                'match': {'matched_record': {'$nin': [None, '']}},
                'duplicatematch': {'matched_record': {'$nin': [None, '']}},
