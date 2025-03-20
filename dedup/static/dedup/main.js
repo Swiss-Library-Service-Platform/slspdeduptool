@@ -194,6 +194,7 @@ const SelectEvaluationModel = {
   data() {
     return {
       modelOptions: ['mean',
+                     'random_forest_book',
                      'random_forest_music'],
       modelSelected: 'mean' // default
   }},
