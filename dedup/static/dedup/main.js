@@ -71,6 +71,9 @@ const RecidList = {
       // Available options. The filter itself must be configured on the backend side
       filterOptions: [{value: 'all', text: 'All'},
                       {value: 'possible', text: 'Possible match'},
+                      {value: 'possible06', text: 'Possible match (>0.6)'},
+                      {value: 'possible05', text: 'Possible match (>0.5)'},
+                      {value: 'possible04', text: 'Possible match (>0.4)'},
                       {value: 'match', text: 'match'},
                       {value: 'nomatch', text: 'No match'},
                       {value: 'duplicatematch', text: 'Duplicate match'}],
