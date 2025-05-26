@@ -14,6 +14,7 @@ from typing import Dict, Union
 
 from lxml import etree
 from dedupmarcxml import RawBriefRec, JsonBriefRec, XmlBriefRec
+from django.http import HttpRequest
 
 
 def json_to_marc(rec: Dict) -> str:
@@ -231,3 +232,33 @@ def remove_ns(data: etree.Element) -> etree.Element:
     temp_data = etree.tostring(data).decode()
     temp_data = re.sub(r'\s?xmlns="[^"]+"', '', temp_data).encode()
     return etree.fromstring(temp_data)
+
+
+def is_col_allowed(col_name: str, request: HttpRequest) -> bool:
+    """Check if the user has access to the collection
+    This function checks if the user has access to the collection
+
+    Parameters:
+    -----------
+    col_name : str
+        The name of the collection to check.
+    request : HttpRequest
+        The request object containing user information.
+
+    Returns:
+    --------
+    bool
+        True if the user has access to the collection, False otherwise.
+    """
+
+    # If the collection name starts with 'NZ_' or is 'training_data', access is denied
+    if col_name.startswith('NZ_') is True or col_name == 'training_data':
+        return False
+
+    # At least one group must be associated to the collection
+    user_groups = list(request.user.groups.values_list("name", flat=True))
+    print(user_groups)
+    if any(col_name.startswith(user_group) for user_group in user_groups):
+        return True
+    print('access denied')
+    return False
