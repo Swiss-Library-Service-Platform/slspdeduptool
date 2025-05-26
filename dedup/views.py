@@ -13,7 +13,6 @@ import pymongo
 import os
 import json
 
-from tools import is_col_allowed
 # Local imports
 from . import tools
 
@@ -56,7 +55,7 @@ def index(request: HttpRequest) -> HttpResponse:
     """
     # Fetch collections names from the database
     cols = [col for col in mongo_db_dedup.list_collection_names()
-            if is_col_allowed(col, request) is True]
+            if tools.is_col_allowed(col, request) is True]
 
     # Render the template with the list of collections
     return render(request, 'dedup/index.html', {"cols": cols})
@@ -76,7 +75,7 @@ def collection(request: HttpRequest, col_name: str) -> HttpResponse:
         return HttpResponse(f'Collection "{col_name}" not found', status=404)
 
     # At least one group must be associated to the collection
-    if is_col_allowed(col_name, request) is False:
+    if tools.is_col_allowed(col_name, request) is False:
         return HttpResponse("No right to access this collection", status=403)
 
     return render(request, 'dedup/collection.html', {"col_name": col_name})
