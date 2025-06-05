@@ -257,8 +257,6 @@ def is_col_allowed(col_name: str, request: HttpRequest) -> bool:
 
     # At least one group must be associated to the collection
     user_groups = list(request.user.groups.values_list("name", flat=True))
-    print(user_groups)
     if any(col_name.startswith(user_group) for user_group in user_groups):
         return True
-    print('access denied')
     return False

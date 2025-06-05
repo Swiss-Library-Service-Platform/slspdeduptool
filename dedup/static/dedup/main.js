@@ -457,7 +457,7 @@ const app = Vue.createApp({
     <header class="p-2">
       <div class="row">
         <div class="mb-2 col-10">
-          <h1>SLSP dedup tool <span class="text-muted fs-5 ms-2">({{ col_name }})</span></h1>
+          <h1>SLSP dedup tool <span class="text-muted fs-5 ms-2">({{ col_name }}) <a :href="'/dedup/col/' + col_name + '/export'"><img src="/static/dedup/file_export.png" ></a></span></h1>
         </div>
         <div class="mb-2 col-2 text-end">
           <a href="/dedup">Home</a>&nbsp;&nbsp;<a href="/dedup/logout">Logout</a>

@@ -12,6 +12,8 @@ from django.contrib.auth.forms import AuthenticationForm
 import pymongo
 import os
 import json
+from io import BytesIO
+import pandas as pd
 
 # Local imports
 from . import tools
@@ -153,7 +155,6 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
         if rec is not None and record_filter != 'duplicatematch':
             recids_query.update({'_id': {'$gte': rec['_id']}})
         elif rec is not None and record_filter == 'duplicatematch':
-            print(rec)
             recids_query.update({'matched_record': {'$gte':rec['matched_record']}})
 
     if record_filter != 'duplicatematch':
@@ -423,6 +424,29 @@ def add_to_training_data(request):
     else:
         return JsonResponse({'status': 'ok', 'message': 'Entry updated in training data'})
 
+@login_required
+def get_matching_records(request, col_name=None):
+    """Get matching records for a collection"""
+    matching_records = mongo_db_dedup[col_name].find({'matched_record': { '$ne': None }},
+                                                           {'_id': False,
+                                                            'rec_id': True,
+                                                            'matched_record': True})
+    matching_records = list(matching_records)
+    if len(matching_records) == 0:
+        return collection(request, col_name)
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        pd.DataFrame(matching_records).to_excel(writer, index=False)
+
+    # 3. Préparer la réponse HTTP
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="export.xlsx"'
+
+    return response
 
 def login_view(request):
     """Manage login of the user

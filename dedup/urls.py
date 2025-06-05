@@ -14,6 +14,9 @@ urlpatterns = [
     # Collection page with list of records to dedup, main dedup view
     path("col/<slug:col_name>", views.collection, name="collection"),
 
+    # Collection page with list of records to dedup, main dedup view
+    path("col/<slug:col_name>/export", views.get_matching_records, name="get_matching_records"),
+
     # API used by the frontend to get the records to dedup
     path("col/<slug:col_name>/locrecids", views.get_local_record_ids, name="get_local_record_ids"),
 
