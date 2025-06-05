@@ -102,7 +102,7 @@ const RecidList = {
   // a review
   template: `
     <h2 class="mb-0">Local IDs</h2>
-    <form class="mb-2" id="recordFilter" @submit.prevent="$emit('fetchRecList', filterSelected, recidtofilter)">
+    <form class="m-2" id="recordFilter" @submit.prevent="$emit('fetchRecList', filterSelected, recidtofilter)">
       <label for="FilterOptions" class="control-label">Filter:</label>
       <select v-model="filterSelected" class="form-select form-select-sm" id="FilterOptions" @change="$emit('fetchRecList', filterSelected)">
         <option v-for="option in filterOptions" :value="option.value" :selected="option.value == filterSelected">{{ option.text }}</option>
@@ -114,8 +114,8 @@ const RecidList = {
       <button id="searchRecords" class="btn btn-sm" type="button" @click="$emit('fetchRecList', filterSelected, recidtofilter)">\u{1F50E}</button>
 
     </form>
-    <div class="mb-2 mt-2">{{ nbTotalRecs }} records</div>
-    <div id="recids" class="list-group">
+    <div class="m-2">{{ nbTotalRecs }} records</div>
+    <div id="recids" class="m-2 list-group">
       <a v-for="recid in recids" :class="{active: (recid.rec_id==selectedLocRecid), 'human-validated': recid.human_validated, 'list-group-item-dark': recid.color }" class="list-group-item list-group-item-action" href="#" @click="$emit('recordSelected', recid.rec_id)">{{ recid.rec_id }}</a>
     </div>
   `
@@ -143,7 +143,7 @@ const FullLocalRec = {
 const FullRec = {
   props: ['fullRecData'],
   template: `
-  <div class="fullrecdata" v-html="fullRecData">
+  <div class="fullrecdata m-2" v-html="fullRecData">
   </div>`
 }
 
@@ -197,13 +197,14 @@ const SelectEvaluationModel = {
   data() {
     return {
       modelOptions: ['mean',
+                     'random_forest_general',
                      'random_forest_book',
                      'random_forest_music'],
       modelSelected: 'mean' // default
   }},
   emits: ["defineEvaluationModel"],
-  template: `<h2 class="mb-0">Evaluation models</h2>
-    <form class="mb-2" id="selectModel">
+  template: `<h2 class="m-2">Evaluation models</h2>
+    <form class="m-2" id="selectModel">
       <label for="modelOptions" class="control-label">Current model:</label>
       <select v-model="modelSelected" class="form-select form-select-sm" id="modelOptions" @change="$emit('defineEvaluationModel', modelSelected)">
         <option v-for="option in modelOptions" :value="option" :selected="option == modelSelected">{{ option }}</option>
@@ -223,7 +224,8 @@ const app = Vue.createApp({
       recids: [],
       nbTotalRecs: null,
       trainingDataMessage: null,
-      selectedModel: 'mean'
+      selectedModel: 'mean',
+      col_name: col_name, // column name is defined in the template
     }
   },
   computed: {
@@ -252,7 +254,51 @@ const app = Vue.createApp({
   created() {
     this.fetchRecList();
   },
+  mounted() {
+    const leftCol = this.$refs.leftCol
+    const centerCol = this.$refs.centerCol
+    const rightCol = this.$refs.rightCol
+    const resizerLeft = this.$refs.resizerLeft
+    const resizerRight = this.$refs.resizerRight
+
+    this.attachResizer(resizerLeft, leftCol, centerCol)
+    this.attachResizer(resizerRight, centerCol, rightCol)
+  },
+
   methods: {
+
+    attachResizer(resizerEl, leftEl, rightEl) {
+      let startX = 0
+      let startLeftWidth = 0
+      let startRightWidth = 0
+
+      const onMouseMove = (e) => {
+        const dx = e.clientX - startX
+        const containerWidth = resizerEl.parentNode.getBoundingClientRect().width
+        const newLeftWidth = ((startLeftWidth + dx) * 100) / containerWidth
+        const newRightWidth = ((startRightWidth - dx) * 100) / containerWidth
+
+        if (newLeftWidth > 5 && newRightWidth > 5) {
+          leftEl.style.width = `${newLeftWidth}%`
+          rightEl.style.width = `${newRightWidth}%`
+        }
+      }
+
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove)
+        document.removeEventListener('mouseup', onMouseUp)
+      }
+
+      const onMouseDown = (e) => {
+        startX = e.clientX
+        startLeftWidth = leftEl.getBoundingClientRect().width
+        startRightWidth = rightEl.getBoundingClientRect().width
+        document.addEventListener('mousemove', onMouseMove)
+        document.addEventListener('mouseup', onMouseUp)
+      }
+
+      resizerEl.addEventListener('mousedown', onMouseDown)
+    },
 
     /* Fetch the selected record in the left list */
     recordSelected(recid) {
@@ -406,57 +452,97 @@ const app = Vue.createApp({
     }
   },
   template: `
-    <header>
+  <div class="container-fluid p-0 vh-100 d-flex flex-column">
+    <!-- Header -->
+    <header class="p-2">
       <div class="row">
         <div class="mb-2 col-10">
-          <h1>SLSP dedup tool</h1>
+          <h1>SLSP dedup tool <span class="text-muted fs-5 ms-2">({{ col_name }})</span></h1>
         </div>
         <div class="mb-2 col-2 text-end">
           <a href="/dedup">Home</a>&nbsp;&nbsp;<a href="/dedup/logout">Logout</a>
         </div>
       </div>
     </header>
-    <div class="row">
-      <aside class="col-1">
-        <recidList :recids="recids" :selectedLocRecid="selectedLocRecid" :nbTotalRecs="nbTotalRecs" @fetch-rec-list="fetchRecList" @record-selected="recordSelected" >
-        </recidList>
+
+    <!-- Main content resizable -->
+    <div class="d-flex flex-grow-1 overflow-hidden">
+      <!-- Colonne gauche -->
+      <aside ref="leftCol" class="h-100 overflow-auto" style="width: 15%;">
+        <recidList
+          :recids="recids"
+          :selectedLocRecid="selectedLocRecid"
+          :nbTotalRecs="nbTotalRecs"
+          @fetch-rec-list="fetchRecList"
+          @record-selected="recordSelected"
+        />
       </aside>
-      <main class="col-9">
-        <div class="row">
+
+      <!-- Resizer between left and center -->
+      <div class="resizer" ref="resizerLeft"></div>
+
+      <!-- Center column -->
+      <main ref="centerCol" class="h-100 overflow-auto" style="width: 70%;">
+        <div class="row m-2">
           <table class="table table-striped" id="briefrec">
-            <thead><tr>
+            <thead>
+              <tr>
                 <th class="col-1"></th>
                 <th class="col-5">Local brief record</th>
                 <th class="col-5">NZ / external brief record</th>
                 <th class="col-1">Score</th>
-            </tr></thead>
+              </tr>
+            </thead>
             <tbody>
-                <tr v-if="locBriefRec" v-for="field in briefrec_fields" :class="{'table-danger': (extNzBriefRec && scores[field]!==null && scores[field] >= 0.2 && scores[field] < 0.8) }">
-                    <th class="text-end">{{ field }}</th>
-                    <td>{{ locBriefRec[field] }}</td>
-                    <td v-if="extNzBriefRec">{{ extNzBriefRec[field] }}</td>
-                    <td v-else></td>
-                    <td v-if="extNzBriefRec">{{ scores[field] }}</td>
-                    <td v-else></td>
-                </tr>
+              <tr
+                v-if="locBriefRec"
+                v-for="field in briefrec_fields"
+                :key="field"
+                :class="{
+                  'table-danger': extNzBriefRec &&
+                    scores[field] !== null &&
+                    scores[field] >= 0.2 &&
+                    scores[field] < 0.8
+                }"
+              >
+                <th class="text-end">{{ field }}</th>
+                <td>{{ locBriefRec[field] }}</td>
+                <td v-if="extNzBriefRec">{{ extNzBriefRec[field] }}</td>
+                <td v-else></td>
+                <td v-if="extNzBriefRec">{{ scores[field] }}</td>
+                <td v-else></td>
+              </tr>
             </tbody>
           </table>
         </div>
         <div class="row">
           <div class="col-6">
-            <FullRec :full-rec-data="locFullRec">
-            </fullRec>
+            <FullRec :full-rec-data="locFullRec" />
           </div>
           <div class="col-6">
-            <FullRec :full-rec-data="extNzFullRec">
-            </FullRec>
+            <FullRec :full-rec-data="extNzFullRec" />
           </div>
         </div>
       </main>
-      <aside class="col-2">
-        <ActionSection :possible-matches="possibleMatches" :selected-ext-nz-rec-rank="selectedExtNzRecRank" :matched-record="matchedRecord" :training-data-message="trainingDataMessage" @ext-nz-rec-selected="extNzRecSelected" @define-matching-record="defineMatchingRecord" @cancel-matching-record="cancelMatchingRecord" @add-to-training-data="addToTrainingData"></ActionSection>
-        <SelectEvaluationModel @defineEvaluationModel = "defineEvaluationModel"></SelectEvaluationModel>
+
+      <!-- Resizer between center and right -->
+      <div class="resizer" ref="resizerRight"></div>
+
+      <!-- right column -->
+      <aside ref="rightCol" class="h-100 overflow-auto" style="width: 15%;">
+        <ActionSection
+          :possible-matches="possibleMatches"
+          :selected-ext-nz-rec-rank="selectedExtNzRecRank"
+          :matched-record="matchedRecord"
+          :training-data-message="trainingDataMessage"
+          @ext-nz-rec-selected="extNzRecSelected"
+          @define-matching-record="defineMatchingRecord"
+          @cancel-matching-record="cancelMatchingRecord"
+          @add-to-training-data="addToTrainingData"
+        />
+        <SelectEvaluationModel @defineEvaluationModel="defineEvaluationModel" />
       </aside>
-    </div>`
+    </div>
+  </div>`
 });
 

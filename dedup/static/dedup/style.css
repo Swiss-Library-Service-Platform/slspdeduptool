@@ -50,6 +50,12 @@ table#brief_rec .lowMatchScore {
     display: inline-block;
 }
 
+.resizer {
+  width: 5px;
+  background-color: #ccc;
+  cursor: col-resize;
+}
+
 /*
 h3 {
     font-size: 1em;
