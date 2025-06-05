@@ -160,8 +160,8 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
     if record_filter != 'duplicatematch':
         # Spectial pipeline for duplicated matches
         pipeline = [
-            {"$match": recids_query},  # Filtre les documents selon ta requête
-            {"$project": {  # Sélectionne les champs souhaités
+            {"$match": recids_query},
+            {"$project": {
                 "_id": False,
                 "rec_id": True,
                 "human_validated": True,
@@ -171,7 +171,7 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
                 "total": [  # Count nb documents
                     {"$count": "total"}
                 ],
-                "results": [  # limit results to 20
+                "results": [
                     {"$limit": 300}
                 ]
             }}
@@ -427,24 +427,50 @@ def add_to_training_data(request):
 @login_required
 def get_matching_records(request, col_name=None):
     """Get matching records for a collection"""
-    matching_records = mongo_db_dedup[col_name].find({'matched_record': { '$ne': None }},
+    matching_records = mongo_db_dedup[col_name].find({'possible_matches.0': {'$exists': True}},
                                                            {'_id': False,
                                                             'rec_id': True,
-                                                            'matched_record': True})
-    matching_records = list(matching_records)
-    if len(matching_records) == 0:
+                                                            'matched_record': True,
+                                                            'possible_matches': True})
+    data = []
+    for matching_record in matching_records:
+        if matching_record['matched_record'] is not None and matching_record['matched_record'] != '':
+            # Matched record
+            data.append({'rec_id': matching_record['rec_id'],
+                         'matched_record': matching_record['matched_record'],
+                         'match_type': 'match'})
+        elif matching_record['matched_record'] is None and len(matching_record['possible_matches']) > 0:
+            # No match but possible matches
+            for possible_match in matching_record['possible_matches']:
+                data.append({'rec_id': matching_record['rec_id'],
+                             'matched_record': possible_match,
+                             'match_type': 'possible match'})
+        # elif matching_record['matched_record'] is None and len(matching_record['possible_matches']) == 0:
+        #     # No match and no possible matches
+        #     data.append({'rec_id': matching_record['rec_id'],
+        #                     'matched_record': None,
+        #                     'match_type': 'no match'})
+
+    if len(data) == 0:
         return collection(request, col_name)
 
+    # create dataframe from the data
+    df = pd.DataFrame(data)
+
+    # Check if there are multiple matches for the same record
+    df.loc[((df['matched_record'].duplicated(keep=False)) & (df['match_type']=='match')), 'match_type'] = 'multi match'
+
+    # Export data to Excel
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        pd.DataFrame(matching_records).to_excel(writer, index=False)
+        df.to_excel(writer, index=False)
 
-    # 3. Préparer la réponse HTTP
+    # Prepare response with the Excel file
     response = HttpResponse(
         output.getvalue(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename="export.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="export_{col_name}.xlsx"'
 
     return response
 
