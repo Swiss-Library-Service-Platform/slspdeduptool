@@ -12,3 +12,4 @@ asgiref
 mysqlclient
 sqlparse
 dedupmarcxml
+XlsxWriter
