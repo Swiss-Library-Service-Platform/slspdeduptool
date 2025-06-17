@@ -157,18 +157,27 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
         elif rec is not None and record_filter == 'duplicatematch':
             recids_query.update({'matched_record': {'$gte':rec['matched_record']}})
 
-    if record_filter != 'duplicatematch':
-        # Spectial pipeline for duplicated matches
+    if record_filter == 'match':
         pipeline = [
             {"$match": recids_query},
+            {"$group": {
+                "_id": "$matched_record",
+                "count": {"$sum": 1},
+                "docs": {"$push": "$$ROOT"}
+            }},
+            {"$match": {
+                "count": 1
+            }},
+            {"$replaceRoot": {"newRoot": {"$arrayElemAt": ["$docs", 0]}}},
+            {"$sort": {"_id": 1}},
             {"$project": {
                 "_id": False,
                 "rec_id": True,
                 "human_validated": True,
                 "matched_record": True
             }},
-            {"$facet": {  # split data
-                "total": [  # Count nb documents
+            {"$facet": {
+                "total": [
                     {"$count": "total"}
                 ],
                 "results": [
@@ -177,7 +186,9 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
             }}
         ]
 
-    else:
+
+
+    elif record_filter == 'duplicatematch':
         # Normal pipeline for other filters
         pipeline = [
 
@@ -250,7 +261,25 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
                 "results": [{"$limit": 300}]  # Limit the results to 20 documents
             }}
         ]
-
+    else:
+        # Workflow for all and no match and possible match filter
+        pipeline = [
+            {"$match": recids_query},
+            {"$project": {
+                "_id": False,
+                "rec_id": True,
+                "human_validated": True,
+                "matched_record": True
+            }},
+            {"$facet": {  # split data
+                "total": [  # Count nb documents
+                    {"$count": "total"}
+                ],
+                "results": [
+                    {"$limit": 300}
+                ]
+            }}
+        ]
     # Execute the query
     result = list(mongo_db_dedup[col_name].aggregate(pipeline))
     recs = result[0]['results']
