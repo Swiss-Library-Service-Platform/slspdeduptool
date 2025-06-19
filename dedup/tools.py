@@ -14,6 +14,7 @@ from typing import Dict, Union
 
 from lxml import etree
 from dedupmarcxml import RawBriefRec, JsonBriefRec, XmlBriefRec
+from collections import Counter
 from django.http import HttpRequest
 
 
@@ -260,3 +261,9 @@ def is_col_allowed(col_name: str, request: HttpRequest) -> bool:
     if any(col_name.startswith(user_group) for user_group in user_groups):
         return True
     return False
+
+def split_unique_and_duplicates(lst):
+    counts = Counter(lst)
+    uniques = [x for x, c in counts.items() if c == 1]
+    non_uniques = [x for x, c in counts.items() if c > 1]
+    return uniques, non_uniques

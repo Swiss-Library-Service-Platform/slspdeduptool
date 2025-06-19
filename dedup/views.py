@@ -113,22 +113,16 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
 
     # Define the queries for the different filters
     queries = {'all': {},
-               'possible': {'possible_matches.0': {'$exists': 1},
-                            # 'max_match_score': {'$gt': 0.7},
-                            'matched_record': None},
-               'possible06': {'possible_matches.0': {'$exists': 1},
-                              'max_match_score': {'$gt': 0.6},
-                              'matched_record': None},
-               'possible05': {'possible_matches.0': {'$exists': 1},
-                              'max_match_score': {'$gt': 0.5},
-                              'matched_record': None},
-               'possible04': {'possible_matches.0': {'$exists': 1},
-                              'max_match_score': {'$gt': 0.4},
-                              'matched_record': None},
-               'nomatch': {'possible_matches.0': {'$exists': 0},
-                           'matched_record': None},
-               'match': {'matched_record': {'$nin': [None, '']}},
-               'duplicatematch': {'matched_record': {'$nin': [None, '']}},
+               'possible': {'match_type': 'possible_match'},
+               'possible06': {'match_type': 'possible_match',
+                              'max_match_score': {'$gt': 0.6}},
+               'possible05': {'match_type': 'possible_match',
+                              'max_match_score': {'$gt': 0.5}},
+               'possible04': {'match_type': 'possible_match',
+                              'max_match_score': {'$gt': 0.4}},
+               'nomatch': {'match_type': 'no_match'},
+               'match': {'match_type': 'match'},
+               'duplicatematch': {'match_type': 'duplicate_match'},
                }
 
     recids_query = queries.get(record_filter, queries['all'])
@@ -157,108 +151,65 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
         elif rec is not None and record_filter == 'duplicatematch':
             recids_query.update({'matched_record': {'$gte':rec['matched_record']}})
 
-    if record_filter == 'match':
-        pipeline = [
-            {"$match": recids_query},
-            {"$group": {
-                "_id": "$matched_record",
-                "count": {"$sum": 1},
-                "docs": {"$push": "$$ROOT"}
-            }},
-            {"$match": {
-                "count": 1
-            }},
-            {"$replaceRoot": {"newRoot": {"$arrayElemAt": ["$docs", 0]}}},
-            {"$sort": {"_id": 1}},
-            {"$project": {
-                "_id": False,
-                "rec_id": True,
-                "human_validated": True,
-                "matched_record": True
-            }},
-            {"$facet": {
-                "total": [
-                    {"$count": "total"}
-                ],
-                "results": [
-                    {"$limit": 300}
-                ]
-            }}
-        ]
-
-
-
-    elif record_filter == 'duplicatematch':
+    if record_filter == 'duplicatematch':
         # Normal pipeline for other filters
+
         pipeline = [
-
-            # Step 0: Sort by matched_record
-            {"$sort": {"matched_record": 1}},
-
-            # Step 1: Filter documents where matched_record is neither None nor an empty string
+            # 1. Match only documents marked as duplicate
             {"$match": recids_query},
 
-            # Step 2: Group by matched_record and count occurrences
+            # 2. Group documents by matched_record
             {"$group": {
                 "_id": "$matched_record",
-                "count": {"$sum": 1},  # Count occurrences of each matched_record
-                "documents": {"$push": "$$ROOT"}  # Store original documents in an array
+                "documents": {"$push": "$$ROOT"}
             }},
 
-            # Step 3: Filter groups where count > 1 (non-unique values)
-            {"$match": {"count": {"$gt": 1}}},
-
-            # Step 4: Unwind the documents array to restore one document per row
+            # 3. Assign a rank to each group to enable color alternation
             {
                 "$setWindowFields": {
-                    "sortBy": {"_id": 1},  # Sort groups by _id (or another field)
+                    "sortBy": {"_id": 1},
                     "output": {
-                        "groupRank": {
-                            "$rank": {}  # Assign a rank to each group
-                        }
-                    }
-                }
-            },
-            {
-                "$set": {
-                    "color": {
-                        "$cond": {
-                            "if": {"$eq": [{"$mod": ["$groupRank", 2]}, 0]},  # Check if rank is even
-                            "then": True,  # If even, set to true
-                            "else": False  # If odd, set to false
-                        }
+                        "groupRank": {"$rank": {}}
                     }
                 }
             },
 
-            # Step 3: Unwind the documents array to restore one document per row
+            # 4. Define color as True/False alternating by group rank
+            {"$set": {
+                "color": {"$eq": [{"$mod": ["$groupRank", 2]}, 0]}
+            }},
+
+            # 5. Unwind documents so each row is one document again
             {"$unwind": "$documents"},
 
-            # Step 4: Add the "groupRank" field to each document
-            {
-                "$set": {
-                    "documents.color": "$color"  # Add the group rank to each document
-                }
-            },
+            # 6. Set color field inside each document
+            {"$set": {
+                "documents.color": "$color"
+            }},
 
+            # 7. Replace root with each document
+            {"$replaceRoot": {"newRoot": "$documents"}},
 
-            # Step 5: Project the desired fields
-            {"$replaceRoot": {"newRoot": "$documents"}},  # Replace the root with the original document
+            # 8. Project only relevant fields
             {"$project": {
                 "_id": False,
                 "rec_id": True,
                 "human_validated": True,
                 "matched_record": True,
-                "color": True
+                "color": True,
+                "match_type": True,
             }},
+
+            # 9. Re-apply match filter if needed (e.g. for paging by rec_id)
             {"$match": recids_query},
+
+            # 10. Sort by matched_record
             {"$sort": {"matched_record": 1}},
 
-
-            # Step 6: Use $facet to split the results
+            # 11. Split results: total count and limited result page
             {"$facet": {
-                "total": [{"$count": "total"}],  # Count the total number of filtered documents
-                "results": [{"$limit": 300}]  # Limit the results to 20 documents
+                "total": [{"$count": "total"}],
+                "results": [{"$limit": 300}]
             }}
         ]
     else:
@@ -282,6 +233,7 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
         ]
     # Execute the query
     result = list(mongo_db_dedup[col_name].aggregate(pipeline))
+
     recs = result[0]['results']
     nb_total_recs = result[0]['total'][0]['total'] if result[0]['total'] else 0
     return JsonResponse({'rec_ids': [{'rec_id': r['rec_id'],
@@ -400,8 +352,46 @@ def post_local_rec(request, rec_id=None, col_name=None):
     be used with an empty string to remove the matched record.
     """
     matched_record = json.loads(request.body)['matched_record']
-    _ = mongo_db_dedup[col_name].update_one({'rec_id': rec_id}, {'$set': {'matched_record': matched_record,
-                                                                          'human_validated': True}})
+    recids_to_check_for_duplicate_match = []
+
+    orig_rec = mongo_db_dedup[col_name].find_one({'rec_id': rec_id},
+                                                 {'_id': False,
+                                                  'matched_record': True})
+    if orig_rec is not None:
+        recids_to_check_for_duplicate_match.append(orig_rec['matched_record'])
+
+    # Case if button "cancel match" is clicked
+    if matched_record is None or matched_record=='':
+        matched_record = None
+
+        _ = mongo_db_dedup[col_name].update_one({'rec_id': rec_id},
+                                                {'$set': {'matched_record': matched_record,
+                                                          'human_validated': True,
+                                                          'match_type': 'no_match'}})
+    else:
+        recids_to_check_for_duplicate_match.append(matched_record)
+        _ = mongo_db_dedup[col_name].update_one({'rec_id': rec_id},
+                                                {'$set': {'matched_record': matched_record,
+                                                          'human_validated': True,
+                                                          'match_type': 'match'}})
+
+    # We need to update 'match_type' field. If we add or remove a match count of matches could change
+    for recid_to_check_for_duplicate_match in recids_to_check_for_duplicate_match:
+        # Find recids of record that need to be updated
+        # Cancel match: old matched record ID
+        # Select match: current matched record ID
+        recids = [r['rec_id'] for r in mongo_db_dedup[col_name].find({'matched_record': recid_to_check_for_duplicate_match},
+                                      {'rec_id': True,
+                                       '_id': False})]
+        # Number of recids decide if we have a duplicate match or not
+        if len(recids) > 1:
+            _ = mongo_db_dedup[col_name].update_many({'rec_id': {'$in': recids}},
+                                                      {'$set': {'match_type': 'duplicate_match'}})
+        elif len(recids) == 1:
+            recid = recids[0]
+            _ = mongo_db_dedup[col_name].update_one({'rec_id': recid},
+                                                    {'$set': {'match_type': 'match'}})
+
     return JsonResponse({'status': 'ok'})
 
 
@@ -456,38 +446,56 @@ def add_to_training_data(request):
 @login_required
 def get_matching_records(request, col_name=None):
     """Get matching records for a collection"""
-    matching_records = mongo_db_dedup[col_name].find({'possible_matches.0': {'$exists': True}},
+
+    # possible matches
+    query = {'possible_matches.0': {'$exists': 1}, 'matched_record': None}
+    update = {"$set": {'match_type': 'possible_match'}}
+    mongo_db_dedup[col_name].update_many(query, update)
+
+    # No matches
+    query = {'possible_matches.0': {'$exists': 0}, 'matched_record': None}
+    update = {"$set": {'match_type': 'no_match'}}
+    mongo_db_dedup[col_name].update_many(query, update)
+
+    # matches and multi_matches
+    query = {'matched_record': {'$ne': None}}
+    project = {'matched_record': 1, '_id': 0}
+    matched_ids = [recid['matched_record'] for recid in mongo_db_dedup[col_name].find(query, project)]
+
+    matched_unique, matched_duplicate = tools.split_unique_and_duplicates(matched_ids)
+
+    query = {"matched_record": {"$in": matched_unique}}
+    update = {"$set": {'match_type': 'match'}}
+    mongo_db_dedup[col_name].update_many(query, update)
+    query = {"matched_record": {"$in": matched_duplicate}}
+    update = {"$set": {'match_type': 'duplicate_match'}}
+    mongo_db_dedup[col_name].update_many(query, update)
+
+    matching_records = mongo_db_dedup[col_name].find({'match_type': {'$in': ['match', 'duplicate_match', 'possible_match']}},
                                                            {'_id': False,
                                                             'rec_id': True,
                                                             'matched_record': True,
-                                                            'possible_matches': True})
+                                                            'possible_matches': True,
+                                                            'match_type': True})
     data = []
     for matching_record in matching_records:
-        if matching_record['matched_record'] is not None and matching_record['matched_record'] != '':
+        if matching_record['match_type'] in ['match', 'duplicate_match']:
             # Matched record
             data.append({'rec_id': matching_record['rec_id'],
                          'matched_record': matching_record['matched_record'],
-                         'match_type': 'match'})
-        elif matching_record['matched_record'] is None and len(matching_record['possible_matches']) > 0:
+                         'match_type': matching_record['match_type']})
+        elif matching_record['match_type'] == 'possible_match':
             # No match but possible matches
             for possible_match in matching_record['possible_matches']:
                 data.append({'rec_id': matching_record['rec_id'],
                              'matched_record': possible_match,
-                             'match_type': 'possible match'})
-        # elif matching_record['matched_record'] is None and len(matching_record['possible_matches']) == 0:
-        #     # No match and no possible matches
-        #     data.append({'rec_id': matching_record['rec_id'],
-        #                     'matched_record': None,
-        #                     'match_type': 'no match'})
+                             'match_type': matching_record['match_type']})
 
     if len(data) == 0:
         return collection(request, col_name)
 
     # create dataframe from the data
     df = pd.DataFrame(data)
-
-    # Check if there are multiple matches for the same record
-    df.loc[((df['matched_record'].duplicated(keep=False)) & (df['match_type']=='match')), 'match_type'] = 'multi match'
 
     # Export data to Excel
     output = BytesIO()
