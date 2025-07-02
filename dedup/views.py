@@ -357,7 +357,7 @@ def post_local_rec(request, rec_id=None, col_name=None):
     orig_rec = mongo_db_dedup[col_name].find_one({'rec_id': rec_id},
                                                  {'_id': False,
                                                   'matched_record': True})
-    if orig_rec is not None:
+    if orig_rec is not None and orig_rec['matched_record'] is not None:
         recids_to_check_for_duplicate_match.append(orig_rec['matched_record'])
 
     # Case if button "cancel match" is clicked
