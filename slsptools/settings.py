@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'dedup',
+    'callnumber_to_barcode',
 ]
 
 MIDDLEWARE = [

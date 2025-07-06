@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+{% load static %}
+<html>
+<head>
+    <title>SLSP tool: callnumber => barcode</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'callnumber_to_barcode/style.css' %}">
+    <link rel="shortcut icon" type="image/png" href="{% static 'favicon.png' %}">
+    <script src="https://unpkg.com/vue@3.2.29/dist/vue.global.js"></script>
+</head>
+<body>
+<div class="container-fluid">
+    <header>
+        <div class="row mb-2">
+            <div class="col-10">
+                <h1>SLSP tool: callnumber => barcode</h1>
+            </div>
+            <div class="col-2 text-end">
+                {% if user.is_authenticated %}
+                <a href="{% url 'callnumber_to_barcode:logout_view' %}">Logout</a>
+                {% else %}
+                <a href="{% url 'callnumber_to_barcode:login_view' %}">Login</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+    <main>
+    {% if user.is_authenticated %}
+<div class="container">
+
+<form method="get" action="{% url 'callnumber_to_barcode:index' %}" class="d-flex align-items-center mb-4">
+  <label for="callnumberSearch" class="form-label me-2 mb-0">Callnumber</label>
+  <input type="text" class="form-control me-2" id="callnumberSearch" name="callnumber" placeholder="Search by Callnumber" value="{{ request.GET.callnumber }}" style="max-width: 200px;">
+  <button type="submit" class="btn btn-primary">Search</button>
+</form>
+
+
+</div>
+<div class="container">
+  <div class="row fw-bold border-bottom pb-2 mb-2">
+    <div class="col-lg-2 col-md-2 col-sm-12">Callnumber</div>
+    <div class="col-lg-2 col-md-4 col-sm-12">MMS ID</div>
+    <div class="col-lg-5 col-md-8 col-sm-12">Title</div>
+    <div class="col-lg-2 col-md-3 col-sm-12">New barcode</div>
+    <div class="col-lg-1 col-md-1 col-sm-12">Error</div>
+  </div>
+  {% for rec in recs %}
+          <form method="post" action="{% url 'callnumber_to_barcode:update' rec.item_id %}?callnumber={{ request.GET.callnumber|urlencode }}">
+        {% csrf_token %}
+  <div class="row">
+
+
+      <div class="col-lg-2 col-md-2 col-sm-12 mb-3">
+            {{ rec.callnumber }}
+      </div>
+      <div class="col-lg-2 col-md-2 col-sm-12 mb-3">
+            {{ rec.item_id }}
+      </div>
+      <div class="col-lg-5 col-md-5 col-sm-12 mb-3">
+            {{ rec.title }}
+      </div>
+      <div class="col-lg-2 col-md-2 col-sm-12 mb-3">
+          <input type="text" name="new_barcode" class="form-control"
+            value="{{ rec.new_barcode |default_if_none:'' }}"
+            onkeydown="if(event.key === 'Enter'){ this.form.submit(); return false; }">
+
+
+      </div>
+      <div class="col-lg-1 col-md-1 col-sm-12 mb-3">
+            {{ rec.error }}
+      </div>
+
+
+  </div>
+      </form>
+  {% endfor %}
+
+
+  </div>
+</div>
+        {% else %}
+
+<div class="alert alert-warning" role="alert">⚠️ You need to login.
+</div>
+
+{%  endif %}
+
+    </main>
+</div>
+<script>csrf_token = "{{ csrf_token }}";</script>
+</body>
+</html>

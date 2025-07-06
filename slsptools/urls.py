@@ -19,5 +19,6 @@ from django.urls import include, path
 
 urlpatterns = [
     path('dedup/', include('dedup.urls')),
+    path('callnumber_to_barcode/', include('callnumber_to_barcode.urls')),
     path('admin/', admin.site.urls),
 ]
