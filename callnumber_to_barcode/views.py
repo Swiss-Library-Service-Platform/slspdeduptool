@@ -86,7 +86,13 @@ def update(request, item_id=None, col_name=None):
     if item.error is True:
         col.update_one({'item_id': item_id}, {'$set': {'new_barcode': None, 'error': True}})
         return redirect(f"{reverse('callnumber_to_barcode:collection', kwargs={'col_name': col_name})}?callnumber={callnumber}")
-    item.data.find('item_data/barcode').text = new_barcode
+
+    # We use the old barcode if the new one is empty, we add error flag
+    if new_barcode is not None:
+        item.data.find('item_data/barcode').text = new_barcode
+    else:
+        item.data.find('item_data/barcode').text = rec['barcode']
+        col.update_one({'item_id': item_id}, {'$set': {'new_barcode': None, 'error': True}})
     item.update()
     if item.error is True:
         col.update_one({'item_id': item_id}, {'$set': {'new_barcode': None, 'error': True}})
@@ -123,10 +129,6 @@ def logout_view(request):
     """Logout the user and redirect to the index page"""
     logout(request)
     return redirect('callnumber_to_barcode:index')
-
-def testwrapper(request):
-    """Test wrapper function"""
-    return HttpResponse(ApiKeys().get_iz_codes())
 
 
 def is_col_allowed(col_name: str, request: HttpRequest) -> bool:

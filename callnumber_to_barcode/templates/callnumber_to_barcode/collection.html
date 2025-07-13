@@ -48,7 +48,7 @@
   {% for rec in recs %}
           <form method="post" action="{% url 'callnumber_to_barcode:update' item_id=rec.item_id col_name=col_name %}?callnumber={{ request.GET.callnumber|urlencode }}">
         {% csrf_token %}
-  <div class="row row {% if rec.error %}text-danger{% endif %}">
+  <div class="row row {% if rec.error %}text-danger{% elif rec.new_barcode %}text-success{% endif %}">
 
 
       <div class="col-lg-2 col-md-2 col-sm-12 mb-3">
