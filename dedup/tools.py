@@ -262,6 +262,7 @@ def is_col_allowed(col_name: str, request: HttpRequest) -> bool:
         return True
     return False
 
+
 def split_unique_and_duplicates(lst):
     counts = Counter(lst)
     uniques = [x for x, c in counts.items() if c == 1]
