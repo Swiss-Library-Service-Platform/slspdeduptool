@@ -256,6 +256,9 @@ def is_col_allowed(col_name: str, request: HttpRequest) -> bool:
     if col_name.startswith('NZ_') is True or col_name == 'training_data':
         return False
 
+    if request.user.is_staff:
+        return True
+
     # At least one group must be associated to the collection
     user_groups = list(request.user.groups.values_list("name", flat=True))
     if any(col_name.startswith(user_group) for user_group in user_groups):

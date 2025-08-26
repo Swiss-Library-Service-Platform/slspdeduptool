@@ -306,7 +306,7 @@ def get_local_rec(request, rec_id, col_name, jsonresponse=True):
 
     # Prepare the dict with matching and possible matching records
     rec_data = {'briefrec': tools.display_briefrec(briefrec),
-                'fullrec': tools.json_to_marc(rec['fullrec']),
+                'fullrec': tools.json_to_marc(rec['fullrec']) if len(rec['fullrec']) else 'No full record',
                 'matched_record': '',
                 'possible_matches': []}
 
@@ -334,7 +334,7 @@ def get_local_rec(request, rec_id, col_name, jsonresponse=True):
         nz_briefrec = JsonBriefRec(rec)
         scores = evaluate_records_similarity(briefrec, nz_briefrec)
         nz_ext_data = {'briefrec': tools.display_briefrec(nz_briefrec),
-                       'fullrec': tools.json_to_marc(rec),
+                       'fullrec': tools.json_to_marc(rec) if len(rec) else 'No full record',
                        'scores': scores,
                        'similarity_score': get_similarity_score(scores, method=selected_model),
                        'rec_id': possible_match}
