@@ -409,6 +409,9 @@ def add_to_training_data(request):
 
     # Get the local record from the database
     local_record = mongo_db_dedup[data['col_name']].find_one({'rec_id': data['local_recid']}, {'_id': False})
+    if len(local_record['fullrec']) == 0:
+        return JsonResponse({'status': 'error', 'message': 'Local record has no full record'})
+    
     briefrec = RawBriefRec(local_record['briefrec'])
 
     # Check if the nz fetched record is in the possible matches

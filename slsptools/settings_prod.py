@@ -115,3 +115,4 @@ STATIC_ROOT = '/apps/webroot/htdocs/static'
 
 # This directory is used for common static files like favicon
 STATICFILES_DIRS = [f'{BASE_DIR}/static']
+

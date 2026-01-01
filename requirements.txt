@@ -9,7 +9,7 @@ lxml
 requests
 almapiwrapper
 asgiref
-mysqlclient
+pymysql
 sqlparse
 dedupmarcxml
 XlsxWriter
