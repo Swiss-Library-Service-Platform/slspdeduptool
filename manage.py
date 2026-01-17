@@ -2,12 +2,13 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+
 from dotenv import load_dotenv
+
 load_dotenv('slsptools/.env')
 
 def main():
     """Run administrative tasks."""
-
     if os.getenv('env') == 'prod':
         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'slsptools.settings_prod')
     else:
