@@ -64,7 +64,7 @@ def api_threshold_probe(request):
         env = 'S' if os.getenv('django_env') == 'dev' else 'P'
         headers = {'content-type': 'application/json',
                    'accept': 'application/json',
-                   'Authorization': 'apikey ' + ApiKeys().get_key('NZ', 'Conf', 'RW', env)}
+                   'Authorization': 'apikey ' + ApiKeys().get_key('NZ', 'Conf', 'R', env)}
 
         r = requests.get('https://api-eu.hosted.exlibrisgroup.com/almaws/v1/conf/test', headers=headers)
 
