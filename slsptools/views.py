@@ -3,6 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
+from almapiwrapper import ApiKeys
+import requests
+import os
+from django.core.cache import cache
+
 
 def index(request: HttpRequest) -> HttpResponse:
     """
@@ -42,3 +47,46 @@ def logout_view(request):
     """Logout the user and redirect to the index page"""
     logout(request)
     return redirect('index')
+
+def api_threshold_probe(request):
+    """Health probe for the API avec cache d'une heure."""
+
+    # We first check if we have a cached status
+    cached_status = cache.get('api_threshold_probe_status')
+    cached_remaining_api_calls = cache.get('remaining_api_calls')
+
+    if cached_status is not None and cached_remaining_api_calls is not None:
+        # We have a cached status, we return it
+        status = cached_status
+        remaining_api_calls = cached_remaining_api_calls
+    else:
+        # No cached status, we perform the API call to check the remaining calls
+        env = 'S' if os.getenv('django_env') == 'dev' else 'P'
+        headers = {'content-type': 'application/json',
+                   'accept': 'application/json',
+                   'Authorization': 'apikey ' + ApiKeys().get_key('NZ', 'Conf', 'RW', env)}
+
+        r = requests.get('https://api-eu.hosted.exlibrisgroup.com/almaws/v1/conf/test', headers=headers)
+
+        if not r.ok:
+            # No response or error response from the API => error status
+            status = 'error'
+            remaining_api_calls = 'unknown'
+        elif 'X-Exl-Api-Remaining' in r.headers and int(r.headers["X-Exl-Api-Remaining"]) < 100000:
+            # Critical threshold reached
+            status = 'critical'
+            remaining_api_calls = r.headers["X-Exl-Api-Remaining"]
+        elif 'X-Exl-Api-Remaining' in r.headers and int(r.headers["X-Exl-Api-Remaining"]) < 500000:
+            # Warning threshold reached
+            status = 'warning'
+            remaining_api_calls = r.headers["X-Exl-Api-Remaining"]
+        else:
+            # Everything is ok, thresholds are fine
+            status = 'ok'
+            remaining_api_calls = r.headers.get("X-Exl-Api-Remaining", 'unknown')
+
+        # We save the status and remaining API calls in cache for 30 minutes
+        cache.set('api_threshold_probe_status', status, 1800)
+        cache.set('remaining_api_calls', remaining_api_calls, 1800)
+
+    return JsonResponse({'status': status, 'remaining_api_calls': remaining_api_calls}, status=200)

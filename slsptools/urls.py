@@ -27,5 +27,6 @@ urlpatterns = [
     # Views to manage login and logout. The login view does not require
     # authentication to be accessed
     path("login/", views.login_view, name="login_view"),
-    path("logout/", views.logout_view, name="logout_view")
+    path("logout/", views.logout_view, name="logout_view"),
+    path("api_threshold/", views.api_threshold_probe, name="api_threshold_probe"),
 ]
