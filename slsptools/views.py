@@ -91,16 +91,16 @@ def get_current_api_threshold():
 
     return {'status': status, 'remaining_api_calls': remaining_api_calls}
 
-def api_threshold_probe(request):
-    """API view to check the current API usage and return the status.
+# def api_threshold_probe(request):
+#     """API view to check the current API usage and return the status.
 
-    This view is unprotected and can be accessed by anyone.
-    It returns a JSON response with the status and remaining API calls.
-    """
+#     This view is unprotected and can be accessed by anyone.
+#     It returns a JSON response with the status and remaining API calls.
+#     """
 
-    api_threshold = get_current_api_threshold()
+#     api_threshold = get_current_api_threshold()
 
-    status = ['ok', 'warning', 'critical'].index(api_threshold['status'])
-    api_threshold_str = f'{status} "Alma api calls threshold" remaining_api_calls={api_threshold["remaining_api_calls"]} - State of remaining API calls in the NZ: {api_threshold["status"].upper()}'
+#     status = ['ok', 'warning', 'critical'].index(api_threshold['status'])
+#     api_threshold_str = f'{status} "Alma api calls threshold" remaining_api_calls={api_threshold["remaining_api_calls"]} - State of remaining API calls in the NZ: {api_threshold["status"].upper()}'
 
-    return HttpResponse(api_threshold_str)
+#     return HttpResponse(api_threshold_str)
