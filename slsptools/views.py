@@ -48,8 +48,8 @@ def logout_view(request):
     logout(request)
     return redirect('index')
 
-def api_threshold_probe(request):
-    """Health probe for the API avec cache d'une heure."""
+def get_current_api_threshold():
+    """Check the current API usage and return the status."""
 
     # We first check if we have a cached status
     cached_status = cache.get('api_threshold_probe_status')
@@ -64,13 +64,13 @@ def api_threshold_probe(request):
         env = 'S' if os.getenv('django_env') == 'dev' else 'P'
         headers = {'content-type': 'application/json',
                    'accept': 'application/json',
-                   'Authorization': 'apikey ' + ApiKeys().get_key('NZ', 'Conf', 'R', env)}
+                   'Authorization': 'apikey ' + ApiKeys().get_key('NZ', 'Conf', 'RW', env)}
 
         r = requests.get('https://api-eu.hosted.exlibrisgroup.com/almaws/v1/conf/test', headers=headers)
 
         if not r.ok:
             # No response or error response from the API => error status
-            status = 'error'
+            status = 'critical'
             remaining_api_calls = 'unknown'
         elif 'X-Exl-Api-Remaining' in r.headers and int(r.headers["X-Exl-Api-Remaining"]) < 100000:
             # Critical threshold reached
@@ -89,4 +89,18 @@ def api_threshold_probe(request):
         cache.set('api_threshold_probe_status', status, 1800)
         cache.set('remaining_api_calls', remaining_api_calls, 1800)
 
-    return JsonResponse({'status': status, 'remaining_api_calls': remaining_api_calls}, status=200)
+    return {'status': status, 'remaining_api_calls': remaining_api_calls}
+
+def api_threshold_probe(request):
+    """API view to check the current API usage and return the status.
+
+    This view is unprotected and can be accessed by anyone.
+    It returns a JSON response with the status and remaining API calls.
+    """
+
+    api_threshold = get_current_api_threshold()
+
+    status = ['ok', 'warning', 'critical'].index(api_threshold['status'])
+    api_threshold_str = f'{status} "Alma api calls threshold" remaining_api_calls={api_threshold["remaining_api_calls"]} - State of remaining API calls in the NZ: {api_threshold['status'].upper()}'
+
+    return HttpResponse(api_threshold_str)
