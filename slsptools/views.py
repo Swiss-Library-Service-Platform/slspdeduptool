@@ -101,6 +101,6 @@ def api_threshold_probe(request):
     api_threshold = get_current_api_threshold()
 
     status = ['ok', 'warning', 'critical'].index(api_threshold['status'])
-    api_threshold_str = f'{status} "Alma api calls threshold" remaining_api_calls={api_threshold["remaining_api_calls"]} - State of remaining API calls in the NZ: {api_threshold['status'].upper()}'
+    api_threshold_str = f'{status} "Alma api calls threshold" remaining_api_calls={api_threshold["remaining_api_calls"]} - State of remaining API calls in the NZ: {api_threshold["status"].upper()}'
 
     return HttpResponse(api_threshold_str)
