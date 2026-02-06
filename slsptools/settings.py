@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'mozilla_django_oidc',
     'slsptools',
     'dedup',
     'callnumber_to_barcode',
@@ -95,7 +96,21 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LOGIN_URL = '/dedup/login/'
+# --- OIDC CONFIGURATION ---
+# Ces valeurs doivent être adaptées à votre fournisseur OIDC
+OIDC_RP_CLIENT_ID = os.getenv('OIDC_RP_CLIENT_ID', 'votre_client_id')
+OIDC_RP_CLIENT_SECRET = os.getenv('OIDC_RP_CLIENT_SECRET', 'votre_client_secret')
+OIDC_OP_AUTHORIZATION_ENDPOINT = os.getenv('OIDC_OP_AUTHORIZATION_ENDPOINT', 'https://example.com/authorize')
+OIDC_OP_TOKEN_ENDPOINT = os.getenv('OIDC_OP_TOKEN_ENDPOINT', 'https://example.com/token')
+OIDC_OP_USER_ENDPOINT = os.getenv('OIDC_OP_USER_ENDPOINT', 'https://example.com/userinfo')
+OIDC_OP_JWKS_ENDPOINT = os.getenv('OIDC_OP_JWKS_ENDPOINT', 'https://example.com/.well-known/jwks.json')
+
+LOGIN_URL = '/oidc/authenticate/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+
+# Pour le développement, désactive la vérification SSL (à ne pas faire en prod)
+OIDC_VERIFY_SSL = False
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
@@ -115,3 +130,8 @@ STATICFILES_DIRS = [f'{BASE_DIR}\\slsptools\\static']
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AUTHENTICATION_BACKENDS = [
+    'slsptools.backends.WhitelistOIDCBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]

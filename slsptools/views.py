@@ -3,11 +3,17 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.decorators import user_passes_test
 from almapiwrapper import ApiKeys
 import requests
 import os
 from django.core.cache import cache
+from pymongo import MongoClient, DESCENDING
+from datetime import date, timedelta, datetime
 
+def is_staff(user):
+    """Check if the user is an admin user."""
+    return user.is_staff
 
 def index(request: HttpRequest) -> HttpResponse:
     """
@@ -104,3 +110,99 @@ def get_current_api_threshold():
 #     api_threshold_str = f'{status} "Alma api calls threshold" remaining_api_calls={api_threshold["remaining_api_calls"]} - State of remaining API calls in the NZ: {api_threshold["status"].upper()}'
 
 #     return HttpResponse(api_threshold_str)
+
+def get_job_status(task: dict, col: str) -> str:
+    """Get the status of a job based on its last run date.
+
+    Args:
+        task (dict): The task document from the database, containing at least a 'TIMESTAMP' field.
+        last_date (datetime): The date of the last run of the job.
+
+    Returns:
+        str: The status of the job ('OK', 'WARNING', 'CRITICAL', 'NO DATA').
+    """
+    task_timestamp = task.get('TIMESTAMP', None)
+    if task_timestamp is None:
+        return 'NO DATA'
+
+    now = datetime.now()
+
+    threshold = timedelta(days=7, minutes=30, seconds=0) if col in ['zbs_cug']\
+        else timedelta(days=1, minutes=30, seconds=0)
+
+    if now - task_timestamp > threshold:
+        return 'CRITICAL'
+
+    if 'FAILED' in task and task['FAILED'] > 0:
+        return 'WARNING'
+
+    return 'OK'
+
+def get_success(task: dict, col: str) -> int:
+    """Check if the task was successful based on its 'FAILED' field.
+
+    Args:
+        task (dict): The task document from the database, containing at least a 'FAILED' field.
+    Returns:
+        int: number of successful operations.
+    """
+    if 'SUCCESS' in task:
+        return task['SUCCESS']
+    elif col == 'abn_cug_mediotheken':
+        return task['nb_users_updated']
+    elif col == 'reminders':
+        return task['nb_copied_in_the_IZ']
+    return 0
+
+@user_passes_test(is_staff)
+def services_status(request: HttpRequest) -> HttpResponse:
+    """Display the status of the services used by the application.
+
+    This view is unprotected and can be accessed by anyone.
+    It displays the status of the services used by the application.
+    """
+    client = MongoClient(os.getenv('monogodb_automation_uri'))
+    db = client[os.getenv('automation_db')]
+    cols = db.list_collection_names()
+
+    data = []
+    for col in cols:
+        collection = db[col]
+
+        history = list(collection.find({'TIMESTAMP': {'$exists': True}}, {'_id': 0, 'DATE': 0, 'TASKS': 0}).sort("TIMESTAMP", DESCENDING).limit(7))
+        if len(history) == 0:
+            data.append({'history': [],
+                         'status': 'NO DATA',
+                         'name': col,
+                         'task_timestamp': None})
+        else:
+
+            task_timestamp = history[0].get('TIMESTAMP', None)
+
+            status = get_job_status(history[0], col)
+            nb_success = get_success(history[0], col)
+            nb_failed = history[0].get('FAILED', 0)
+
+            # We keep only the keys that are common to all documents to be able to create a nice table
+            history_keys = history[0].keys()
+            for hist in history:
+                keys_to_remove = [key for key in hist.keys() if key not in history_keys]
+                for key in keys_to_remove:
+                    del hist[key]
+
+            data.append({'history': history,
+                         'status': status,
+                         'name': col,
+                         'nb_success': nb_success,
+                         'nb_failed': nb_failed,
+                         'task_timestamp': task_timestamp})
+
+
+
+
+    context = {'data': data, 'cols': cols}
+        # 'api_threshold_status': api_threshold['status'],
+        # 'remaining_api_calls': api_threshold['remaining_api_calls'],
+
+
+    return render(request, 'slsptools/services_status.html', context)

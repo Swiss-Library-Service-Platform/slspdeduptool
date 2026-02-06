@@ -24,9 +24,13 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.index, name="index"),
 
+    # OIDC authentication endpoints
+    path('oidc/', include('mozilla_django_oidc.urls')),
+
     # Views to manage login and logout. The login view does not require
     # authentication to be accessed
     path("login/", views.login_view, name="login_view"),
     path("logout/", views.logout_view, name="logout_view"),
+    path('services_status/', views.services_status, name='services_status'),
     # path("api_threshold/", views.api_threshold_probe, name="api_threshold_probe"),
 ]

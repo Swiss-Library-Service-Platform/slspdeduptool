@@ -13,3 +13,4 @@ pymysql~=1.1.2
 sqlparse~=0.5.5
 dedupmarcxml~=1.1.4
 XlsxWriter~=3.2.9
+mozilla-django-oidc>=4.0.0
