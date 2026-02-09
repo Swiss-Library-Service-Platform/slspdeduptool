@@ -76,19 +76,19 @@ def get_current_api_threshold():
 
         if not r.ok:
             # No response or error response from the API => error status
-            status = 'critical'
+            status = 'CRITICAL'
             remaining_api_calls = 'unknown'
         elif 'X-Exl-Api-Remaining' in r.headers and int(r.headers["X-Exl-Api-Remaining"]) < 100000:
             # Critical threshold reached
-            status = 'critical'
+            status = 'CRITICAL'
             remaining_api_calls = r.headers["X-Exl-Api-Remaining"]
         elif 'X-Exl-Api-Remaining' in r.headers and int(r.headers["X-Exl-Api-Remaining"]) < 500000:
             # Warning threshold reached
-            status = 'warning'
+            status = 'WARNING'
             remaining_api_calls = r.headers["X-Exl-Api-Remaining"]
         else:
             # Everything is ok, thresholds are fine
-            status = 'ok'
+            status = 'OK'
             remaining_api_calls = r.headers.get("X-Exl-Api-Remaining", 'unknown')
 
         # We save the status and remaining API calls in cache for 30 minutes
@@ -127,8 +127,12 @@ def get_job_status(task: dict, col: str) -> str:
 
     now = datetime.now()
 
-    threshold = timedelta(days=7, minutes=30, seconds=0) if col in ['zbs_cug']\
-        else timedelta(days=1, minutes=30, seconds=0)
+    if col in ['zbs_cug']:
+        threshold = timedelta(days=7, minutes=30, seconds=0)
+    elif col in ['VKSS_Einlagerung']:
+        threshold = timedelta(days=7, hours=2, minutes=30, seconds=0)
+    else:
+        threshold = timedelta(days=1, minutes=30, seconds=0)
 
     if now - task_timestamp > threshold:
         return 'CRITICAL'
@@ -197,10 +201,9 @@ def services_status(request: HttpRequest) -> HttpResponse:
                          'nb_failed': nb_failed,
                          'task_timestamp': task_timestamp})
 
-
-
-
-    context = {'data': data, 'cols': cols}
+    api_threshold = get_current_api_threshold()
+    print(api_threshold)
+    context = {'data': data, 'cols': cols, 'api_threshold': api_threshold}
         # 'api_threshold_status': api_threshold['status'],
         # 'remaining_api_calls': api_threshold['remaining_api_calls'],
 

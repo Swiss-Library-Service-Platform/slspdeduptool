@@ -26,90 +26,105 @@
             </div>
         </div>
     </header>
-    <main>
-        <div class="container-fluid">
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Nom</th>
-            <th>Date</th>
-            <th>Nb success</th>
-            <th>Nb failed</th>
-            <th>Statut</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for col in data %}
-        <tr>
-            <td>{{ col.name }}</td>
-            <td>{{ col.task_timestamp|date:"d.m.Y H:i" }}</td>
-            <td>{{ col.nb_success }}</td>
-            <td>{{ col.nb_failed }}</td>
-<td>
-  {% if col.status == "OK" %}
-    <span class="badge bg-success">OK</span>
-  {% elif col.status == "WARNING" %}
-    <span class="badge bg-warning text-dark">WARNING</span>
-  {% elif col.status == "CRITICAL" %}
-    <span class="badge bg-danger">CRITICAL</span>
-  {% else %}
-    <span class="badge bg-secondary">NO DATA</span>
-  {% endif %}
-</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-        </div>
-    </main>
 </div>
+<main>
+    <div class="container-fluid">
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Date</th>
+                <th>Nb success</th>
+                <th>Nb failed</th>
+                <th>Statut</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for col in data %}
+            <tr>
+                <td>{{ col.name }}</td>
+                <td>{{ col.task_timestamp|date:"d.m.Y H:i" }}</td>
+                <td>{{ col.nb_success }}</td>
+                <td>{{ col.nb_failed }}</td>
+                <td>
+                    {% if col.status == "OK" %}
+                    <span class="badge bg-success">OK</span>
+                    {% elif col.status == "WARNING" %}
+                    <span class="badge bg-warning text-dark">WARNING</span>
+                    {% elif col.status == "CRITICAL" %}
+                    <span class="badge bg-danger">CRITICAL</span>
+                    {% else %}
+                    <span class="badge bg-secondary">NO DATA</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-{% for service in data %}
-<div class="container-fluid my-5">
-<h4 class="mt-5">{{ service.name }}
-  {% if service.status == "OK" %}
-    <span class="small badge bg-success">OK</span>
-  {% elif service.status == "WARNING" %}
-    <span class="small badge bg-warning text-dark">WARNING</span>
-  {% elif service.status == "CRITICAL" %}
-    <span class="small badge bg-danger">CRITICAL</span>
-  {% else %}
-    <span class="small badge bg-secondary">NO DATA</span>
-  {% endif %}</h4>
-{% if service.history %}
-  {% with timestamps=service.history|map_attr:"TIMESTAMP" %}
-<table class="table table-striped table-bordered table-hover align-middle">
-  <thead>
-    <tr>
-      <th></th>
-      {% for ts in timestamps %}
-        <th>
-          <span class="small">{{ ts|date:"d.m.Y" }}</span><br>
-          <span class="small text-muted">{{ ts|date:"H:i" }}</span>
-        </th>
-      {% endfor %}
-    </tr>
-  </thead>
-  <tbody>
-    {% for key in service.history.0.keys %}
-      {% if key != "TIMESTAMP" %}
-        <tr>
-          <td>{{ key }}</td>
-          {% for item in service.history %}
-            <td>{{ item|get_item:key }}</td>
-          {% endfor %}
-        </tr>
-      {% endif %}
+    <div class="container-fluid my-5">
+        <h4 class="mt-5">
+            Api thresholds:
+            {{ api_threshold.remaining_api_calls }}
+            {% if api_threshold.status == "OK" %}
+            <span class="badge bg-success">OK</span>
+            {% elif api_threshold.status == "WARNING" %}
+            <span class="badge bg-warning text-dark">WARNING</span>
+            {% elif api_threshold.status == "CRITICAL" %}
+            <span class="badge bg-danger">CRITICAL</span>
+            {% else %}
+            <span class="badge bg-secondary">NO DATA</span>
+            {% endif %}
+        </h4>
+    </div>
+
+    {% for service in data %}
+    <div class="container-fluid my-5">
+        <h4 class="mt-5">{{ service.name }}
+            {% if service.status == "OK" %}
+            <span class="small badge bg-success">OK</span>
+            {% elif service.status == "WARNING" %}
+            <span class="small badge bg-warning text-dark">WARNING</span>
+            {% elif service.status == "CRITICAL" %}
+            <span class="small badge bg-danger">CRITICAL</span>
+            {% else %}
+            <span class="small badge bg-secondary">NO DATA</span>
+            {% endif %}</h4>
+        {% if service.history %}
+        {% with timestamps=service.history|map_attr:"TIMESTAMP" %}
+        <table class="table table-striped table-bordered table-hover align-middle">
+            <thead>
+            <tr>
+                <th></th>
+                {% for ts in timestamps %}
+                <th>
+                    <span class="small">{{ ts|date:"d.m.Y" }}</span><br>
+                    <span class="small text-muted">{{ ts|date:"H:i" }}</span>
+                </th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for key in service.history.0.keys %}
+            {% if key != "TIMESTAMP" %}
+            <tr>
+                <td>{{ key }}</td>
+                {% for item in service.history %}
+                <td>{{ item|get_item:key }}</td>
+                {% endfor %}
+            </tr>
+            {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endwith %}
+        {% else %}
+        <p class="text-muted">No data</p>
+        {% endif %}
+    </div>
     {% endfor %}
-  </tbody>
-</table>
-  {% endwith %}
-{% else %}
-  <p class="text-muted">No data</p>
-{% endif %}
-            </div>
-{% endfor %}
-
+</main>
 <script>csrf_token = "{{ csrf_token }}";</script>
 </body>
 </html>
