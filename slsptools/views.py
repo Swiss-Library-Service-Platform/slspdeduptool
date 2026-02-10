@@ -121,11 +121,25 @@ def get_job_status(task: dict, col: str) -> str:
     Returns:
         str: The status of the job ('OK', 'WARNING', 'CRITICAL', 'NO DATA').
     """
+    now = datetime.now()
+
     task_timestamp = task.get('TIMESTAMP', None)
+    if col == 'NZ_external_database':
+        task_timestamp = task.get('end_time', None)
+        if task_timestamp:
+            if now - task_timestamp > timedelta(days=8, hours=12, minutes=0, seconds=0):
+                return 'CRITICAL'
+        else:
+            task_timestamp = task.get('start_time', None)
+            if now - task_timestamp > timedelta(days=2, hours=0, minutes=0, seconds=0):
+                return 'CRITICAL'
+        return 'OK'
+
+
     if task_timestamp is None:
         return 'NO DATA'
 
-    now = datetime.now()
+
 
     if col in ['zbs_cug']:
         threshold = timedelta(days=7, minutes=30, seconds=0)
@@ -156,6 +170,8 @@ def get_success(task: dict, col: str) -> int:
         return task['nb_users_updated']
     elif col == 'reminders':
         return task['nb_copied_in_the_IZ']
+    elif col == 'NZ_external_database':
+        return task['nb_records_at_end_time']
     return 0
 
 @user_passes_test(is_staff)
@@ -167,24 +183,35 @@ def services_status(request: HttpRequest) -> HttpResponse:
     """
     client = MongoClient(os.getenv('monogodb_automation_uri'))
     db = client[os.getenv('automation_db')]
-    cols = db.list_collection_names()
+    cols = sorted(db.list_collection_names(), key=lambda x: x.casefold())
 
     data = []
     for col in cols:
         collection = db[col]
 
-        history = list(collection.find({'TIMESTAMP': {'$exists': True}}, {'_id': 0, 'DATE': 0, 'TASKS': 0}).sort("TIMESTAMP", DESCENDING).limit(7))
+        if col == 'NZ_external_database':
+            history = list(collection.find({'start_time': {'$exists': True}}, {'_id': 0, 'chunk_directory': 0, 'critical_error_messages': 0 }).sort('start_time', DESCENDING).limit(7))
+            for hist in history:
+                hist['FAILED'] = len(hist.get('data_error_messages', []))
+                del hist['data_error_messages']
+                hist['TIMESTAMP'] = hist.get('start_time', None)
+        else:
+            history = list(collection.find({'TIMESTAMP': {'$exists': True}}, {'_id': 0, 'DATE': 0, 'TASKS': 0}).sort("TIMESTAMP", DESCENDING).limit(7))
+
         if len(history) == 0:
             data.append({'history': [],
                          'status': 'NO DATA',
                          'name': col,
                          'task_timestamp': None})
         else:
-
-            task_timestamp = history[0].get('TIMESTAMP', None)
+            if col == 'NZ_external_database':
+                task_timestamp = history[0].get('start_time', None)
+            else:
+                task_timestamp = history[0].get('TIMESTAMP', None)
 
             status = get_job_status(history[0], col)
             nb_success = get_success(history[0], col)
+
             nb_failed = history[0].get('FAILED', 0)
 
             # We keep only the keys that are common to all documents to be able to create a nice table

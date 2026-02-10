@@ -271,3 +271,41 @@ def split_unique_and_duplicates(lst):
     uniques = [x for x, c in counts.items() if c == 1]
     non_uniques = [x for x, c in counts.items() if c > 1]
     return uniques, non_uniques
+
+
+def refresh_match_type(col_name: str, mongo_db_dedup: 'pymongo.database.Database') -> None:
+    """Refresh the match type of records for a collection
+
+    This view is an API that can be used to refresh the match type of records for a collection.
+    It will update the match type of records based on the current state of the matched_record and possible_matches fields.
+
+        Parameters:
+        -----------
+        col_name : str
+            The name of the collection for which to refresh the match type.
+        mongo_db_dedup : pymongo.database.Database
+            The MongoDB database containing the deduplication collections.
+    """
+    # possible matches
+    query = {'possible_matches.0': {'$exists': 1}, 'matched_record': None}
+    update = {"$set": {'match_type': 'possible_match'}}
+    mongo_db_dedup[col_name].update_many(query, update)
+
+    # No matches
+    query = {'possible_matches.0': {'$exists': 0}, 'matched_record': None}
+    update = {"$set": {'match_type': 'no_match'}}
+    mongo_db_dedup[col_name].update_many(query, update)
+
+    # matches and multi_matches
+    query = {'matched_record': {'$ne': None}}
+    project = {'matched_record': 1, '_id': 0}
+    matched_ids = [recid['matched_record'] for recid in mongo_db_dedup[col_name].find(query, project)]
+
+    matched_unique, matched_duplicate = split_unique_and_duplicates(matched_ids)
+
+    query = {"matched_record": {"$in": matched_unique}}
+    update = {"$set": {'match_type': 'match'}}
+    mongo_db_dedup[col_name].update_many(query, update)
+    query = {"matched_record": {"$in": matched_duplicate}}
+    update = {"$set": {'match_type': 'duplicate_match'}}
+    mongo_db_dedup[col_name].update_many(query, update)

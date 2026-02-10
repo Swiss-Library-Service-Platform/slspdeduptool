@@ -59,6 +59,8 @@ def index(request: HttpRequest) -> HttpResponse:
     cols = [col for col in mongo_db_dedup.list_collection_names()
             if tools.is_col_allowed(col, request) is True]
 
+    cols.sort(key=lambda x: x.casefold())
+
     # Render the template with the list of collections
     return render(request, 'dedup/index.html', {"cols": cols})
 
@@ -79,6 +81,8 @@ def collection(request: HttpRequest, col_name: str) -> HttpResponse:
     # At least one group must be associated to the collection
     if tools.is_col_allowed(col_name, request) is False:
         return HttpResponse("No right to access this collection", status=403)
+
+    tools.refresh_match_type(col_name, mongo_db_dedup)
 
     return render(request, 'dedup/collection.html', {"col_name": col_name})
 
@@ -446,33 +450,13 @@ def add_to_training_data(request):
     else:
         return JsonResponse({'status': 'ok', 'message': 'Entry updated in training data'})
 
+
 @login_required
 def get_matching_records(request, col_name=None):
     """Get matching records for a collection"""
 
-    # possible matches
-    query = {'possible_matches.0': {'$exists': 1}, 'matched_record': None}
-    update = {"$set": {'match_type': 'possible_match'}}
-    mongo_db_dedup[col_name].update_many(query, update)
-
-    # No matches
-    query = {'possible_matches.0': {'$exists': 0}, 'matched_record': None}
-    update = {"$set": {'match_type': 'no_match'}}
-    mongo_db_dedup[col_name].update_many(query, update)
-
-    # matches and multi_matches
-    query = {'matched_record': {'$ne': None}}
-    project = {'matched_record': 1, '_id': 0}
-    matched_ids = [recid['matched_record'] for recid in mongo_db_dedup[col_name].find(query, project)]
-
-    matched_unique, matched_duplicate = tools.split_unique_and_duplicates(matched_ids)
-
-    query = {"matched_record": {"$in": matched_unique}}
-    update = {"$set": {'match_type': 'match'}}
-    mongo_db_dedup[col_name].update_many(query, update)
-    query = {"matched_record": {"$in": matched_duplicate}}
-    update = {"$set": {'match_type': 'duplicate_match'}}
-    mongo_db_dedup[col_name].update_many(query, update)
+    if col_name is not None:
+        tools.refresh_match_type(col_name, mongo_db_dedup)
 
     matching_records = mongo_db_dedup[col_name].find({'match_type': {'$in': ['match', 'duplicate_match', 'possible_match']}},
                                                            {'_id': False,
