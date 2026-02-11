@@ -287,12 +287,12 @@ def refresh_match_type(col_name: str, mongo_db_dedup: 'pymongo.database.Database
             The MongoDB database containing the deduplication collections.
     """
     # possible matches
-    query = {'possible_matches.0': {'$exists': 1}, 'matched_record': None}
+    query = {'possible_matches.0': {'$exists': 1}, 'matched_record': None, 'human_validated': {'$ne': True}}
     update = {"$set": {'match_type': 'possible_match'}}
     mongo_db_dedup[col_name].update_many(query, update)
 
     # No matches
-    query = {'possible_matches.0': {'$exists': 0}, 'matched_record': None}
+    query = {'possible_matches.0': {'$exists': 0}, 'matched_record': None, 'human_validated': {'$ne': True}}
     update = {"$set": {'match_type': 'no_match'}}
     mongo_db_dedup[col_name].update_many(query, update)
 
