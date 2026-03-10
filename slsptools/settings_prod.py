@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent #.parent
 SECRET_KEY = os.getenv('django_secret_key_prod')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['86.119.44.187', '10.0.9.44', 'serviceplatform.slsp.ch', '127.0.0.1', 'localhost']
 
