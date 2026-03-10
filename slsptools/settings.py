@@ -97,13 +97,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # --- OIDC CONFIGURATION ---
-# Ces valeurs doivent être adaptées à votre fournisseur OIDC
-OIDC_RP_CLIENT_ID = os.getenv('OIDC_RP_CLIENT_ID', 'votre_client_id')
-OIDC_RP_CLIENT_SECRET = os.getenv('OIDC_RP_CLIENT_SECRET', 'votre_client_secret')
-OIDC_OP_AUTHORIZATION_ENDPOINT = os.getenv('OIDC_OP_AUTHORIZATION_ENDPOINT', 'https://example.com/authorize')
-OIDC_OP_TOKEN_ENDPOINT = os.getenv('OIDC_OP_TOKEN_ENDPOINT', 'https://example.com/token')
-OIDC_OP_USER_ENDPOINT = os.getenv('OIDC_OP_USER_ENDPOINT', 'https://example.com/userinfo')
-OIDC_OP_JWKS_ENDPOINT = os.getenv('OIDC_OP_JWKS_ENDPOINT', 'https://example.com/.well-known/jwks.json')
+OIDC_RP_CLIENT_ID = os.getenv('OIDC_RP_CLIENT_ID', 'client_id')
+OIDC_RP_CLIENT_SECRET = os.getenv('OIDC_RP_CLIENT_SECRET', 'secret_key')
+OIDC_OP_AUTHORIZATION_ENDPOINT = os.getenv('OIDC_OP_AUTHORIZATION_ENDPOINT', 'https://login.test.eduid.ch/idp/profile/oidc/authorize')
+OIDC_OP_TOKEN_ENDPOINT = os.getenv('OIDC_OP_TOKEN_ENDPOINT', 'https://login.test.eduid.ch/idp/profile/oidc/token')
+OIDC_OP_USER_ENDPOINT = os.getenv('OIDC_OP_USER_ENDPOINT', 'https://login.test.eduid.ch/idp/profile/oidc/userinfo')
+OIDC_OP_JWKS_ENDPOINT = os.getenv('OIDC_OP_JWKS_ENDPOINT', 'https://login.test.eduid.ch/idp/profile/oidc/keyset')
 
 LOGIN_URL = '/oidc/authenticate/'
 LOGIN_REDIRECT_URL = '/'

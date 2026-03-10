@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'mozilla_django_oidc',
     'slsptools',
     'dedup',
     'callnumber_to_barcode',
@@ -95,7 +96,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LOGIN_URL = '/dedup/login/'
+LOGIN_URL = '/oidc/authenticate'
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
@@ -116,3 +117,16 @@ STATIC_ROOT = '/apps/webroot/htdocs/static'
 # This directory is used for common static files like favicon
 STATICFILES_DIRS = [f'{BASE_DIR}/static']
 
+OIDC_RP_SIGN_ALGO = "HS256"
+
+OIDC_RP_CLIENT_ID = os.getenv('OIDC_RP_CLIENT_ID', 'client_id')
+OIDC_RP_CLIENT_SECRET = os.getenv('OIDC_RP_CLIENT_SECRET', 'secret_key')
+OIDC_OP_AUTHORIZATION_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/authorize'
+OIDC_OP_TOKEN_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/token'
+OIDC_OP_USER_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/userinfo'
+# OIDC_OP_JWKS_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/keyset'
+
+AUTHENTICATION_BACKENDS = [
+    'slsptools.authentication_backend.EmailMatchesUsernameOIDCBackend',
+    'mozilla_django_oidc.auth.OIDCAuthenticationBackend'
+]
