@@ -117,7 +117,7 @@ STATIC_ROOT = '/apps/webroot/htdocs/static'
 # This directory is used for common static files like favicon
 STATICFILES_DIRS = [f'{BASE_DIR}/static']
 
-OIDC_RP_SIGN_ALGO = "HS256"
+OIDC_RP_SIGN_ALGO = "RS256"
 
 OIDC_RP_CLIENT_ID = os.getenv('OIDC_RP_CLIENT_ID', 'client_id')
 OIDC_RP_CLIENT_SECRET = os.getenv('OIDC_RP_CLIENT_SECRET', 'secret_key')
