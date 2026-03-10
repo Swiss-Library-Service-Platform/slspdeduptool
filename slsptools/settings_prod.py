@@ -118,13 +118,14 @@ STATIC_ROOT = '/apps/webroot/htdocs/static'
 STATICFILES_DIRS = [f'{BASE_DIR}/static']
 
 OIDC_RP_SIGN_ALGO = "RS256"
+OIDC_VERIFY_JWT = True
 
 OIDC_RP_CLIENT_ID = os.getenv('OIDC_RP_CLIENT_ID', 'client_id')
 OIDC_RP_CLIENT_SECRET = os.getenv('OIDC_RP_CLIENT_SECRET', 'secret_key')
 OIDC_OP_AUTHORIZATION_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/authorize'
 OIDC_OP_TOKEN_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/token'
 OIDC_OP_USER_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/userinfo'
-# OIDC_OP_JWKS_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/keyset'
+OIDC_OP_JWKS_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/keyset'
 
 AUTHENTICATION_BACKENDS = [
     'slsptools.authentication_backend.EmailMatchesUsernameOIDCBackend',
