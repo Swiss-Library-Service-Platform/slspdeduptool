@@ -4,6 +4,7 @@ URLs for the deduplication app.
 
 from django.urls import path
 from . import views
+from slsptools.views import login_view, logout_view
 
 app_name = "dedup"
 
@@ -28,8 +29,8 @@ urlpatterns = [
 
     # Views to manage login and logout. The login view does not require
     # authentication to be accessed
-    path("login/", views.login_view, name="login_view"),
-    path("logout/", views.logout_view, name="logout_view")
+    path("login/", login_view, name="login_view"),
+    path("logout/", logout_view, name="logout_view")
 
     # path("dnbrec/<str:rec_id>", views.get_dnb_rec, name="get_dnb_rec"),
 ]

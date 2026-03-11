@@ -4,6 +4,7 @@ URLs for the deduplication app.
 
 from django.urls import path
 from . import views
+from slsptools.views import login_view, logout_view
 
 app_name = "callnumber_to_barcode"
 
@@ -14,6 +15,6 @@ urlpatterns = [
     path("<slug:col_name>/update/<str:item_id>", views.update, name="update"),
     # Views to manage login and logout. The login view does not require
     # authentication to be accessed
-    path("login/", views.login_view, name="login_view"),
-    path("logout/", views.logout_view, name="logout_view")
+    path("login/", login_view, name="login_view"),
+    path("logout/", logout_view, name="logout_view"),
 ]
