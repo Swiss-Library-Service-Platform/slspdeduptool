@@ -20,7 +20,7 @@
                 {% if user.is_authenticated %}
                 <a href="{% url 'dedup:logout_view' %}">Logout</a>
                 {% else %}
-                <a href="{% url 'dedup:login_view' %}">Login</a>
+                <a href="{% url 'dedup:login_view' %}?next={{ request.get_full_path|urlencode }}">Login</a>
                 {% endif %}
             </div>
         </div>

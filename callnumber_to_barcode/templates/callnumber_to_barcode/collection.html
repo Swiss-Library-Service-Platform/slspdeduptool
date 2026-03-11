@@ -20,7 +20,7 @@
                 {% if user.is_authenticated %}
                 <a href="{% url 'callnumber_to_barcode:logout_view' %}">Logout</a>
                 {% else %}
-                <a href="{% url 'callnumber_to_barcode:login_view' %}">Login</a>
+                <a href="{% url 'callnumber_to_barcode:login_view' %}?next={{ request.get_full_path|urlencode }}">Login</a>
                 {% endif %}
             </div>
         </div>

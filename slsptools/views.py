@@ -44,7 +44,7 @@ def login_view(request):
                 return redirect('index')
 
     oidc_login_url = reverse('oidc_authentication_init')
-    next_url = request.GET.get('next', request.get_full_path())
+    next_url = request.GET.get('next', '/')
     return redirect(f"{oidc_login_url}?next={next_url}")
 
 def logout_view(request):
