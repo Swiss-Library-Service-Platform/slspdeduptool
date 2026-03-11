@@ -11,6 +11,7 @@ import os
 from django.core.cache import cache
 from pymongo import MongoClient, DESCENDING
 from datetime import timedelta, datetime
+from django.views.generic import TemplateView
 
 def is_staff(user):
     """Check if the user is an admin user."""
@@ -233,3 +234,6 @@ def services_status(request: HttpRequest) -> HttpResponse:
 
 
     return render(request, 'slsptools/services_status.html', context)
+
+class AuthenticationErrorView(TemplateView):
+    template_name = 'slsptools/authentication_error.html'

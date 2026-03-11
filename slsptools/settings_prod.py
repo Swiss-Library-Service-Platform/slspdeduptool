@@ -133,3 +133,6 @@ AUTHENTICATION_BACKENDS = [
     'slsptools.authentication_backend.EmailMatchesUsernameOIDCBackend',
     'django.contrib.auth.backends.ModelBackend'
 ]
+
+# Redirect to a custom error page if OIDC authentication fails
+OIDC_AUTHENTICATION_ERROR_URL = '/oidc/authentication-error/'
