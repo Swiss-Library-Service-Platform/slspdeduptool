@@ -136,3 +136,6 @@ AUTHENTICATION_BACKENDS = [
 
 # Redirect to a custom error page if OIDC authentication fails
 OIDC_AUTHENTICATION_ERROR_URL = '/oidc/authentication-error/'
+
+OIDC_CREATE_USER = False
+

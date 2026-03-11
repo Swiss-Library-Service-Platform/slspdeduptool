@@ -135,3 +135,5 @@ AUTHENTICATION_BACKENDS = [
     'slsptools.backends.WhitelistOIDCBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+OIDC_CREATE_USER = False
