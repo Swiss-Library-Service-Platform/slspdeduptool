@@ -41,12 +41,12 @@ class EmailMatchesUsernameOIDCBackend(OIDCAuthenticationBackend):
 
         return user
 
-    def get_or_create_user(self, access_token, id_token, payload):
-        """
-        Returns a user object or None if no user matches the claims.
-        This prevents exceptions and allows the OIDC error page to be shown.
-        """
-        users = self.filter_users_by_claims(payload)
-        if not users.exists():
-            return None
-        return users.first()
+    # def get_or_create_user(self, access_token, id_token, payload):
+    #     """
+    #     Returns a user object or None if no user matches the claims.
+    #     This prevents exceptions and allows the OIDC error page to be shown.
+    #     """
+    #     users = self.filter_users_by_claims(payload)
+    #     if not users.exists():
+    #         return None
+    #     return users.first()
