@@ -97,6 +97,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LOGIN_URL = '/oidc/authenticate'
+LOGIN_REDIRECT_URL = '/'
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
@@ -126,6 +127,7 @@ OIDC_OP_AUTHORIZATION_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/author
 OIDC_OP_TOKEN_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/token'
 OIDC_OP_USER_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/userinfo'
 OIDC_OP_JWKS_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/keyset'
+END_SESSION_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/end-session'
 
 AUTHENTICATION_BACKENDS = [
     'slsptools.authentication_backend.EmailMatchesUsernameOIDCBackend',

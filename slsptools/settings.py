@@ -103,6 +103,7 @@ OIDC_OP_AUTHORIZATION_ENDPOINT = os.getenv('OIDC_OP_AUTHORIZATION_ENDPOINT', 'ht
 OIDC_OP_TOKEN_ENDPOINT = os.getenv('OIDC_OP_TOKEN_ENDPOINT', 'https://login.test.eduid.ch/idp/profile/oidc/token')
 OIDC_OP_USER_ENDPOINT = os.getenv('OIDC_OP_USER_ENDPOINT', 'https://login.test.eduid.ch/idp/profile/oidc/userinfo')
 OIDC_OP_JWKS_ENDPOINT = os.getenv('OIDC_OP_JWKS_ENDPOINT', 'https://login.test.eduid.ch/idp/profile/oidc/keyset')
+END_SESSION_ENDPOINT = 'https://login.eduid.ch/idp/profile/oidc/end-session'
 
 LOGIN_URL = '/oidc/authenticate/'
 LOGIN_REDIRECT_URL = '/'

@@ -1,15 +1,16 @@
-from django.http import HttpResponse, JsonResponse, HttpRequest
-from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse, HttpRequest
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import user_passes_test
+from django.conf import settings
+from django.urls import reverse
 from almapiwrapper import ApiKeys
 import requests
 import os
 from django.core.cache import cache
 from pymongo import MongoClient, DESCENDING
-from datetime import date, timedelta, datetime
+from datetime import timedelta, datetime
 
 def is_staff(user):
     """Check if the user is an admin user."""
@@ -28,31 +29,27 @@ def index(request: HttpRequest) -> HttpResponse:
 def login_view(request):
     """Manage login of the user
 
-    It uses the AuthenticationForm to authenticate the user.
-    If the user is authenticated, it will redirect to the index page.
+    Redirects to the OIDC login endpoint with a 'next' parameter for the current page,
+    using Django's reverse lookup for robustness.
     """
-    # We check the method of the request, post is used to send the form
-    # and get is used to display the form
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
-
-        # We collect the data from the form and check if it's valid
         if form.is_valid():
             username = form.cleaned_data.get('username')
             password = form.cleaned_data.get('password')
             user = authenticate(username=username, password=password)
-
-            # Redirection to the index page if the user is authenticated
             if user is not None:
                 login(request, user)
                 return redirect('index')
 
-    return render(request, 'slsptools/login.html', {'form': AuthenticationForm()})
+    oidc_login_url = reverse('oidc_authentication_init')
+    next_url = request.GET.get('next', request.get_full_path())
+    return redirect(f"{oidc_login_url}?next={next_url}")
 
 def logout_view(request):
     """Logout the user and redirect to the index page"""
     logout(request)
-    return redirect('index')
+    return redirect(settings.END_SESSION_ENDPOINT)
 
 def get_current_api_threshold():
     """Check the current API usage and return the status."""
