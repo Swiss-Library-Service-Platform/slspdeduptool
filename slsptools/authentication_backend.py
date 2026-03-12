@@ -16,30 +16,33 @@ class EmailMatchesUsernameOIDCBackend(OIDCAuthenticationBackend):
         """
         email = claims.get("email")
         if not email:
-            return User.objects.none()
+            return None
+        if not User.objects.filter(username=email):
+            return None
+
         return User.objects.filter(username=email)
 
 
-    def update_user(self, user, claims):
-        """
-        Synchronize some non-critical attributes.
-        """
-        changed = False
-
-        # Optional: first/last name from SWITCH edu-ID
-        given = claims.get("given_name")
-        family = claims.get("family_name")
-        if hasattr(user, "first_name") and given is not None and user.first_name != given:
-            user.first_name = given
-            changed = True
-        if hasattr(user, "last_name") and family is not None and user.last_name != family:
-            user.last_name = family
-            changed = True
-
-        if changed:
-            user.save()
-
-        return user
+    # def update_user(self, user, claims):
+    #     """
+    #     Synchronize some non-critical attributes.
+    #     """
+    #     changed = False
+    #
+    #     # Optional: first/last name from SWITCH edu-ID
+    #     given = claims.get("given_name")
+    #     family = claims.get("family_name")
+    #     if hasattr(user, "first_name") and given is not None and user.first_name != given:
+    #         user.first_name = given
+    #         changed = True
+    #     if hasattr(user, "last_name") and family is not None and user.last_name != family:
+    #         user.last_name = family
+    #         changed = True
+    #
+    #     if changed:
+    #         user.save()
+    #
+    #     return user
 
     # def get_or_create_user(self, access_token, id_token, payload):
     #     """
