@@ -16,9 +16,9 @@ class EmailMatchesUsernameOIDCBackend(OIDCAuthenticationBackend):
         """
         email = claims.get("email")
         if not email:
-            return None
+            return User.objects.none()
         if not User.objects.filter(username=email):
-            return None
+            return User.objects.none()
 
         return User.objects.filter(username=email)
 
