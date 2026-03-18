@@ -143,10 +143,10 @@ def get_job_status(task: dict, col: str) -> str:
     if task_timestamp is None:
         return 'NO DATA'
 
-    if col in ['zbs_cug']:
-        threshold = timedelta(days=7, minutes=30, seconds=0)
+    if col in ['zbs_cug', 'bcufr_analytical_records']:
+        threshold = timedelta(days=7, hours=1, minutes=0, seconds=0)
     elif col in ['VKSS_Einlagerung']:
-        threshold = timedelta(days=7, hours=2, minutes=30, seconds=0)
+        threshold = timedelta(days=1, hours=2, minutes=30, seconds=0)
     else:
         threshold = timedelta(days=1, minutes=30, seconds=0)
 
