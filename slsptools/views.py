@@ -1,21 +1,24 @@
+import os
+from datetime import timedelta, datetime
+
+import requests
+from almapiwrapper import ApiKeys
+from django.conf import settings
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.forms import AuthenticationForm
+from django.core.cache import cache
 from django.http import HttpResponse, HttpRequest
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.decorators import user_passes_test
-from django.conf import settings
 from django.urls import reverse
-from almapiwrapper import ApiKeys
-import requests
-import os
-from django.core.cache import cache
-from pymongo import MongoClient, DESCENDING
-from datetime import timedelta, datetime
 from django.views.generic import TemplateView
+from pymongo import MongoClient, DESCENDING
+
 
 def is_staff(user):
     """Check if the user is an admin user."""
     return user.is_staff
+
 
 def index(request: HttpRequest) -> HttpResponse:
     """
@@ -26,6 +29,7 @@ def index(request: HttpRequest) -> HttpResponse:
 
     # Render the template with the list of collections
     return render(request, 'slsptools/index.html')
+
 
 def login_view(request):
     """Manage login of the user
@@ -47,10 +51,12 @@ def login_view(request):
     next_url = request.GET.get('next', '/')
     return redirect(f"{oidc_login_url}?next={next_url}")
 
+
 def logout_view(request):
     """Logout the user and redirect to the index page"""
     logout(request)
     return redirect(settings.END_SESSION_ENDPOINT)
+
 
 def get_current_api_threshold():
     """Check the current API usage and return the status."""
@@ -95,6 +101,7 @@ def get_current_api_threshold():
 
     return {'status': status, 'remaining_api_calls': remaining_api_calls}
 
+
 # def api_threshold_probe(request):
 #     """API view to check the current API usage and return the status.
 
@@ -133,11 +140,8 @@ def get_job_status(task: dict, col: str) -> str:
                 return 'CRITICAL'
         return 'OK'
 
-
     if task_timestamp is None:
         return 'NO DATA'
-
-
 
     if col in ['zbs_cug']:
         threshold = timedelta(days=7, minutes=30, seconds=0)
@@ -153,6 +157,7 @@ def get_job_status(task: dict, col: str) -> str:
         return 'WARNING'
 
     return 'OK'
+
 
 def get_success(task: dict, col: str) -> int:
     """Check if the task was successful based on its 'FAILED' field.
@@ -172,6 +177,7 @@ def get_success(task: dict, col: str) -> int:
         return task['nb_records_at_end_time']
     return 0
 
+
 @user_passes_test(is_staff)
 def services_status(request: HttpRequest) -> HttpResponse:
     """Display the status of the services used by the application.
@@ -188,13 +194,24 @@ def services_status(request: HttpRequest) -> HttpResponse:
         collection = db[col]
 
         if col == 'NZ_external_database':
-            history = list(collection.find({'start_time': {'$exists': True}}, {'_id': 0, 'chunk_directory': 0, 'critical_error_messages': 0 }).sort('start_time', DESCENDING).limit(7))
+            history = list(collection.find({'start_time': {'$exists': True}},
+                                           {'_id': 0, 'chunk_directory': 0, 'critical_error_messages': 0}).sort(
+                'start_time', DESCENDING).limit(7))
             for hist in history:
                 hist['FAILED'] = len(hist.get('data_error_messages', []))
                 del hist['data_error_messages']
                 hist['TIMESTAMP'] = hist.get('start_time', None)
+        elif col == 'bcufr_analytical_records':
+            history = list(
+                collection.find({'TIMESTAMP': {'$exists': True}},
+                                {'_id': 0, 'DATE': 0, 'TASKS': 0, 'ADDED_RECORDS_MMS_IDS': 0}).sort("TIMESTAMP",
+                                                                                                    DESCENDING).limit(
+                    7))
         else:
-            history = list(collection.find({'TIMESTAMP': {'$exists': True}}, {'_id': 0, 'DATE': 0, 'TASKS': 0}).sort("TIMESTAMP", DESCENDING).limit(7))
+            history = list(
+                collection.find({'TIMESTAMP': {'$exists': True}}, {'_id': 0, 'DATE': 0, 'TASKS': 0}).sort("TIMESTAMP",
+                                                                                                          DESCENDING).limit(
+                    7))
 
         if len(history) == 0:
             data.append({'history': [],
@@ -227,13 +244,13 @@ def services_status(request: HttpRequest) -> HttpResponse:
                          'task_timestamp': task_timestamp})
 
     api_threshold = get_current_api_threshold()
-    print(api_threshold)
-    context = {'data': data, 'cols': cols, 'api_threshold': api_threshold}
-        # 'api_threshold_status': api_threshold['status'],
-        # 'remaining_api_calls': api_threshold['remaining_api_calls'],
 
+    context = {'data': data, 'cols': cols, 'api_threshold': api_threshold}
+    # 'api_threshold_status': api_threshold['status'],
+    # 'remaining_api_calls': api_threshold['remaining_api_calls'],
 
     return render(request, 'slsptools/services_status.html', context)
+
 
 class AuthenticationErrorView(TemplateView):
     template_name = 'slsptools/authentication_error.html'
