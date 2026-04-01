@@ -181,9 +181,13 @@ def get_success(task: dict, col: str) -> int:
 def services_status(request: HttpRequest) -> HttpResponse:
     """Display the status of the services used by the application.
 
-    If the user is not staff, display a custom authentication error page.
+    If the user is not authenticated, redirect to login with next parameter.
+    If the user is authenticated but not staff, display a custom authentication error page.
     """
-    if not request.user.is_authenticated or not is_staff(request.user):
+    if not request.user.is_authenticated:
+        login_url = reverse('login_view')
+        return redirect(f"{login_url}?next={request.path}")
+    if not is_staff(request.user):
         return render(request, 'slsptools/authentication_error.html', status=403)
 
     client = MongoClient(os.getenv('monogodb_automation_uri'))

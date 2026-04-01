@@ -1,6 +1,5 @@
 # Django imports
-import http
-
+from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
@@ -65,10 +64,16 @@ def collection(request, col_name):
                   'callnumber_to_barcode/collection.html',
                   {'recs': recs, 'col_name': col_name})
 
+@login_required
 def update(request, item_id=None, col_name=None):
     # We check that the collection name provided in url exists
     if col_name not in mongo_db_callnumbers.list_collection_names():
         return HttpResponse(f'Collection "{col_name}" not found', status=404)
+
+    # Check rights to update collection
+    if not is_col_allowed(col_name, request):
+        return HttpResponse("You are not authorized to update this collection", status=403)
+
     col = mongo_db_callnumbers[col_name]
     callnumber = request.GET.get('callnumber', '')
     new_barcode = request.POST.get('new_barcode', None)
