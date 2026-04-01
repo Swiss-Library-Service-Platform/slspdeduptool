@@ -178,13 +178,14 @@ def get_success(task: dict, col: str) -> int:
     return 0
 
 
-@user_passes_test(is_staff)
 def services_status(request: HttpRequest) -> HttpResponse:
     """Display the status of the services used by the application.
 
-    This view is unprotected and can be accessed by anyone.
-    It displays the status of the services used by the application.
+    If the user is not staff, display a custom authentication error page.
     """
+    if not request.user.is_authenticated or not is_staff(request.user):
+        return render(request, 'slsptools/authentication_error.html', status=403)
+
     client = MongoClient(os.getenv('monogodb_automation_uri'))
     db = client[os.getenv('automation_db')]
     cols = sorted(db.list_collection_names(), key=lambda x: x.casefold())
@@ -250,7 +251,3 @@ def services_status(request: HttpRequest) -> HttpResponse:
     # 'remaining_api_calls': api_threshold['remaining_api_calls'],
 
     return render(request, 'slsptools/services_status.html', context)
-
-
-class AuthenticationErrorView(TemplateView):
-    template_name = 'slsptools/authentication_error.html'
