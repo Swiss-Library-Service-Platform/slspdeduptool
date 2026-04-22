@@ -5,6 +5,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.urls import reverse
+from django.utils.html import escape
 from almapiwrapper.inventory import Item
 
 from django.http import HttpResponse
@@ -42,7 +43,7 @@ def collection(request, col_name):
 
     # We check that the collection name provided in url exists
     if col_name not in mongo_db_callnumbers.list_collection_names():
-        return HttpResponse(f'Collection "{col_name}" not found', status=404)
+        return HttpResponse(escape(f'Collection "{col_name}" not found'), status=404)
     col = mongo_db_callnumbers[col_name]
 
     callnumber_query = request.GET.get('callnumber', '')
@@ -68,7 +69,7 @@ def collection(request, col_name):
 def update(request, item_id=None, col_name=None):
     # We check that the collection name provided in url exists
     if col_name not in mongo_db_callnumbers.list_collection_names():
-        return HttpResponse(f'Collection "{col_name}" not found', status=404)
+        return HttpResponse(escape(f'Collection "{col_name}" not found'), status=404)
 
     # Check rights to update collection
     if not is_col_allowed(col_name, request):
@@ -82,12 +83,22 @@ def update(request, item_id=None, col_name=None):
     col.update_one({'item_id': item_id}, {'$set': {'new_barcode': new_barcode, 'error': False}})
     rec = col.find_one({'item_id': item_id})
     if rec is None:
-        return redirect(f"{reverse('callnumber_to_barcode:collection', kwargs={'col_name': col_name})}?callnumber={callnumber}")
+        redirect_url = reverse(
+            "callnumber_to_barcode:collection",
+            kwargs={"col_name": col_name},
+            query={"callnumber": callnumber},
+        )
+        return redirect(redirect_url)
     zone = col_name.split('_')[0]
     item = Item(rec['mms_id'], rec['holding_id'], rec['item_id'], zone=zone, env='P')
     if item.error is True:
         col.update_one({'item_id': item_id}, {'$set': {'new_barcode': None, 'error': True}})
-        return redirect(f"{reverse('callnumber_to_barcode:collection', kwargs={'col_name': col_name})}?callnumber={callnumber}")
+        redirect_url = reverse(
+            "callnumber_to_barcode:collection",
+            kwargs={"col_name": col_name},
+            query={"callnumber": callnumber},
+        )
+        return redirect(redirect_url)
 
     # We use the old barcode if the new one is empty, we add error flag
     if new_barcode is not None:
@@ -99,7 +110,12 @@ def update(request, item_id=None, col_name=None):
     if item.error is True:
         col.update_one({'item_id': item_id}, {'$set': {'new_barcode': None, 'error': True}})
 
-    return redirect(f"{reverse('callnumber_to_barcode:collection', kwargs={'col_name': col_name})}?callnumber={callnumber}")
+    redirect_url = reverse(
+        "callnumber_to_barcode:collection",
+        kwargs={"col_name": col_name},
+        query={"callnumber": callnumber},
+    )
+    return redirect(redirect_url)
 
 
 def login_view(request):

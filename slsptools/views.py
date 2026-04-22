@@ -49,6 +49,7 @@ def login_view(request):
 
     oidc_login_url = reverse('oidc_authentication_init')
     next_url = request.GET.get('next', '/')
+
     return redirect(f"{oidc_login_url}?next={next_url}")
 
 

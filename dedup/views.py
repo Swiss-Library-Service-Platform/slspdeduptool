@@ -7,6 +7,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
+from django.utils.html import escape
+from mongosanitizer.sanitizer import sanitize
 
 # Standard library imports
 import pymongo
@@ -76,7 +78,7 @@ def collection(request: HttpRequest, col_name: str) -> HttpResponse:
     # We check that the collection name provided in url exists
     if col_name not in [col for col in mongo_db_dedup.list_collection_names()
                         if not col_name.startswith('NZ_') is True and col_name != 'training_data']:
-        return HttpResponse(f'Collection "{col_name}" not found', status=404)
+        return HttpResponse(escape(f'Collection "{col_name}" not found'), status=404)
 
     # At least one group must be associated to the collection
     if tools.is_col_allowed(col_name, request) is False:
@@ -384,7 +386,7 @@ def post_local_rec(request, rec_id=None, col_name=None):
         # Find recids of record that need to be updated
         # Cancel match: old matched record ID
         # Select match: current matched record ID
-        recids = [r['rec_id'] for r in mongo_db_dedup[col_name].find({'matched_record': recid_to_check_for_duplicate_match},
+        recids = [r['rec_id'] for r in mongo_db_dedup[col_name].find({'matched_record': sanitize(recid_to_check_for_duplicate_match)},
                                       {'rec_id': True,
                                        '_id': False})]
         # Number of recids decide if we have a duplicate match or not
@@ -412,7 +414,7 @@ def add_to_training_data(request):
     selected_model = data.get('selectedModel', 'mean')
 
     # Get the local record from the database
-    local_record = mongo_db_dedup[data['col_name']].find_one({'rec_id': data['local_recid']}, {'_id': False})
+    local_record = mongo_db_dedup[data['col_name']].find_one({'rec_id': sanitize(data['local_recid'])}, {'_id': False})
     if len(local_record['fullrec']) == 0:
         return JsonResponse({'status': 'error', 'message': 'Local record has no full record'})
     
@@ -423,7 +425,7 @@ def add_to_training_data(request):
         return JsonResponse({'status': 'error', 'message': 'External record not found in possible matches'})
 
     # Get the NZ record from the database
-    nz_ext_rec = mongo_col_nz.find_one({'mms_id': data['ext_nz_recid']}, {'_id': False})
+    nz_ext_rec = mongo_col_nz.find_one({'mms_id': sanitize(data['ext_nz_recid'])}, {'_id': False})
     nz_briefrec = JsonBriefRec(nz_ext_rec)
 
     # Calculate the similarity score

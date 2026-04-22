@@ -14,3 +14,4 @@ sqlparse
 dedupmarcxml
 XlsxWriter
 mozilla-django-oidc
+mongosanitizer
