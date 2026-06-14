@@ -32,5 +32,6 @@ urlpatterns = [
     path("login/", views.login_view, name="login_view"),
     path("logout/", views.logout_view, name="logout_view"),
     path('services_status/', views.services_status, name='services_status'),
+    path('toggle_one_login_token_letter/', views.toggle_one_login_token_letter, name='toggle_one_login_token_letter'),
     # path("api_threshold/", views.api_threshold_probe, name="api_threshold_probe"),
 ]

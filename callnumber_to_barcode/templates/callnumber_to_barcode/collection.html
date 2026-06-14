@@ -14,7 +14,7 @@
     <header>
         <div class="row mb-2">
             <div class="col-10">
-                <h1>SLSP tool: callnumber => barcode  <span class="text-muted fs-5 ms-2">({{ col_name }})</span></h1>
+                <h1>SLSP tool: callnumber => barcode <span class="text-muted fs-5 ms-2">({{ col_name }})</span></h1>
             </div>
             <div class="col-2 text-end">
                 {% if user.is_authenticated %}
@@ -26,70 +26,69 @@
         </div>
     </header>
     <main>
-    {% if user.is_authenticated %}
-<div class="container">
+        {% if user.is_authenticated %}
+        <div class="container">
 
-<form method="get" action="{% url 'callnumber_to_barcode:collection' col_name=col_name %}" class="d-flex align-items-center mb-4">
-  <label for="callnumberSearch" class="form-label me-2 mb-0">Callnumber</label>
-  <input type="text" class="form-control me-2" id="callnumberSearch" name="callnumber" placeholder="Search by Callnumber" value="{{ request.GET.callnumber }}" style="max-width: 200px;">
-  <button type="submit" class="btn btn-primary">Search</button>
-</form>
-
-
-</div>
-<div class="container">
-  <div class="row fw-bold border-bottom pb-2 mb-2">
-    <div class="col-lg-2 col-md-2 col-sm-12">Callnumber</div>
-    <div class="col-lg-2 col-md-4 col-sm-12">MMS ID</div>
-    <div class="col-lg-5 col-md-8 col-sm-12">Title</div>
-    <div class="col-lg-2 col-md-3 col-sm-12">New barcode</div>
-    <div class="col-lg-1 col-md-1 col-sm-12">Error</div>
-  </div>
-  {% for rec in recs %}
-          <form method="post" action="{% url 'callnumber_to_barcode:update' item_id=rec.item_id col_name=col_name %}?callnumber={{ request.GET.callnumber|urlencode }}">
-        {% csrf_token %}
-  <div class="row row {% if rec.error %}text-danger{% elif rec.new_barcode %}text-success{% endif %}">
+            <form method="get" action="{% url 'callnumber_to_barcode:collection' col_name=col_name %}"
+                  class="d-flex align-items-center mb-4">
+                <label for="callnumberSearch" class="form-label me-2 mb-0">Callnumber</label>
+                <input type="text" class="form-control me-2" id="callnumberSearch" name="callnumber"
+                       placeholder="Search by Callnumber" value="{{ request.GET.callnumber }}"
+                       style="max-width: 200px;">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </form>
 
 
-      <div class="col-lg-2 col-md-2 col-sm-12 mb-3">
-            {{ rec.callnumber }}
-      </div>
-      <div class="col-lg-2 col-md-2 col-sm-12 mb-3">
-            {{ rec.item_id }}
-      </div>
-      <div class="col-lg-5 col-md-5 col-sm-12 mb-3">
-            {{ rec.title }}
-      </div>
-      <div class="col-lg-2 col-md-2 col-sm-12 mb-3">
-          <input type="text" name="new_barcode" class="form-control"
-            value="{{ rec.new_barcode |default_if_none:'' }}"
-            onkeydown="if(event.key === 'Enter'){ this.form.submit(); return false; }">
+        </div>
+        <div class="container">
+            <div class="row fw-bold border-bottom pb-2 mb-2">
+                <div class="col-lg-2 col-md-2 col-sm-12">Callnumber</div>
+                <div class="col-lg-2 col-md-4 col-sm-12">MMS ID</div>
+                <div class="col-lg-5 col-md-8 col-sm-12">Title</div>
+                <div class="col-lg-2 col-md-3 col-sm-12">New barcode</div>
+                <div class="col-lg-1 col-md-1 col-sm-12">Error</div>
+            </div>
+            {% for rec in recs %}
+            <form method="post"
+                  action="{% url 'callnumber_to_barcode:update' item_id=rec.item_id col_name=col_name %}?callnumber={{ request.GET.callnumber|urlencode }}">
+                {% csrf_token %}
+                <div class="row row {% if rec.error %}text-danger{% elif rec.new_barcode %}text-success{% endif %}">
 
 
-      </div>
-      <div class="col-lg-1 col-md-1 col-sm-12 mb-3">
-            {{ rec.error }}
-      </div>
+                    <div class="col-lg-2 col-md-2 col-sm-12 mb-3">
+                        {{ rec.callnumber }}
+                    </div>
+                    <div class="col-lg-2 col-md-2 col-sm-12 mb-3">
+                        {{ rec.item_id }}
+                    </div>
+                    <div class="col-lg-5 col-md-5 col-sm-12 mb-3">
+                        {{ rec.title }}
+                    </div>
+                    <div class="col-lg-2 col-md-2 col-sm-12 mb-3">
+                        <input type="text" name="new_barcode" class="form-control"
+                               value="{{ rec.new_barcode |default_if_none:'' }}"
+                               onkeydown="if(event.key === 'Enter'){ this.form.submit(); return false; }">
 
 
-  </div>
-      </form>
-
-  {% empty %}
-    <p><i>No result</i></p>
-
-  {% endfor %}
+                    </div>
+                    <div class="col-lg-1 col-md-1 col-sm-12 mb-3">
+                        {{ rec.error }}
+                    </div>
 
 
-  </div>
-</div>
+                </div>
+            </form>
+
+            {% empty %}
+            <p><i>No result</i></p>
+
+            {% endfor %}
+
+
+        </div>
         {% else %}
-
-<div class="alert alert-warning" role="alert">⚠️ You need to login.
-</div>
-
-{%  endif %}
-
+        <div class="alert alert-warning" role="alert">⚠️ You need to login.</div>
+        {% endif %}
     </main>
 </div>
 <script>csrf_token = "{{ csrf_token }}";</script>

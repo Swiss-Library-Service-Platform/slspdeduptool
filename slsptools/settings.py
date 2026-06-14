@@ -5,7 +5,7 @@ We use dotenv to load environment variables from a .env file.
 """
 import os
 
-from django.conf.global_settings import STATIC_ROOT
+# from django.conf.global_settings import STATIC_ROOT
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -132,8 +132,11 @@ STATICFILES_DIRS = [f'{BASE_DIR}\\slsptools\\static']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTHENTICATION_BACKENDS = [
-    'slsptools.backends.WhitelistOIDCBackend',
+    'slsptools.authentication_backend.EmailMatchesUsernameOIDCBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 
 OIDC_CREATE_USER = False
+
+IZS_WITH_ACTIVE_MFA = ['NZ', 'HPH']
+IZ_ONE_LOOGIN_LETTER_TOKEN = os.getenv('IZ_ONE_LOOGIN_LETTER_TOKEN')

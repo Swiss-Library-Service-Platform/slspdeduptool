@@ -58,7 +58,7 @@ def json_to_marc(rec: Dict) -> str:
     return new_data.replace(' ', '&nbsp;')
 
 
-def json_to_xml(data: dict) -> etree.Element('record'):
+def json_to_xml(data: dict) -> etree.Element:
     """
     Transform a JSON record to MarcXML format.
 
@@ -75,7 +75,7 @@ def json_to_xml(data: dict) -> etree.Element('record'):
         An XML element containing the MarcXML record.
     """
 
-    # Create the xml record
+    # Create the XML record
     record = etree.Element('record')
 
     # Iterate all fields

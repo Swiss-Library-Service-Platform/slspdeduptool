@@ -3,15 +3,16 @@ from datetime import timedelta, datetime
 
 import requests
 from almapiwrapper import ApiKeys
+from almapiwrapper.config import Letter
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import user_passes_test
+# from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.cache import cache
-from django.http import HttpResponse, HttpRequest
+from django.http import HttpResponse, HttpRequest, HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.urls import reverse
-from django.views.generic import TemplateView
+# from django.views.generic import TemplateView
 from pymongo import MongoClient, DESCENDING
 
 
@@ -103,26 +104,12 @@ def get_current_api_threshold():
     return {'status': status, 'remaining_api_calls': remaining_api_calls}
 
 
-# def api_threshold_probe(request):
-#     """API view to check the current API usage and return the status.
-
-#     This view is unprotected and can be accessed by anyone.
-#     It returns a JSON response with the status and remaining API calls.
-#     """
-
-#     api_threshold = get_current_api_threshold()
-
-#     status = ['ok', 'warning', 'critical'].index(api_threshold['status'])
-#     api_threshold_str = f'{status} "Alma api calls threshold" remaining_api_calls={api_threshold["remaining_api_calls"]} - State of remaining API calls in the NZ: {api_threshold["status"].upper()}'
-
-#     return HttpResponse(api_threshold_str)
-
 def get_job_status(task: dict, col: str) -> str:
     """Get the status of a job based on its last run date.
 
     Args:
         task (dict): The task document from the database, containing at least a 'TIMESTAMP' field.
-        last_date (datetime): The date of the last run of the job.
+        col (str): The name of the collection, used to determine specific thresholds for certain jobs.
 
     Returns:
         str: The status of the job ('OK', 'WARNING', 'CRITICAL', 'NO DATA').
@@ -164,7 +151,9 @@ def get_success(task: dict, col: str) -> int:
     """Check if the task was successful based on its 'FAILED' field.
 
     Args:
+        col:
         task (dict): The task document from the database, containing at least a 'FAILED' field.
+
     Returns:
         int: number of successful operations.
     """
@@ -182,7 +171,7 @@ def get_success(task: dict, col: str) -> int:
 def services_status(request: HttpRequest) -> HttpResponse:
     """Display the status of the services used by the application.
 
-    If the user is not authenticated, redirect to login with next parameter.
+    If the user is not authenticated, redirect to log in with next parameter.
     If the user is authenticated but not staff, display a custom authentication error page.
     """
     if not request.user.is_authenticated:
@@ -256,3 +245,32 @@ def services_status(request: HttpRequest) -> HttpResponse:
     # 'remaining_api_calls': api_threshold['remaining_api_calls'],
 
     return render(request, 'slsptools/services_status.html', context)
+
+
+def toggle_one_login_token_letter(request: HttpRequest) -> HttpResponse:
+    """
+
+    Args:
+        request:
+
+    Returns:
+
+    """
+    for iz in settings.IZS_WITH_ACTIVE_MFA:
+        pass
+
+    letter = Letter('LoginUsingOneTimeTokenLetter', 'NZ', 'P')
+    if request.method == 'POST':
+        if request.method == "POST":
+            token = request.POST.get("token", "").strip()
+            if token != settings.IZ_ONE_LOOGIN_LETTER_TOKEN:
+                return HttpResponse("Token is incorrect")
+
+            letter.enabled = not letter.enabled
+            letter.update()
+
+    context = {'enabled': letter.enabled}
+    return render(request, 'slsptools/toggle_one_login_token_letter.html', context)
+
+    letter = Letter('LoginUsingOneTimeTokenLetter', 'NZ', 'P')
+    return HttpResponse(f"One login token letter is enabled: {letter.enabled}")

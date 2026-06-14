@@ -52,10 +52,16 @@ def index(request: HttpRequest) -> HttpResponse:
     """
     Display the list of collections available in the dedup database
 
-    This view is unprotected and can be accessed by anyone. It displays the
+    This view is public. It displays the
     list of collections. The application is able to dedup several collections
     without any hard coding. We display all collections of `dedup_db` except
     the ones starting with 'NZ_' and the training data collection.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+
+    Returns:
+        HttpResponse: Rendered HTML page with the list of accessible collections.
     """
     # Fetch collections names from the database
     cols = [col for col in mongo_db_dedup.list_collection_names()
@@ -68,11 +74,19 @@ def index(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def collection(request: HttpRequest, col_name: str) -> HttpResponse:
-    """Display the first records of a collection
+    """
+    Render the main collection page showing the first records of a given collection.
 
-    This view is protected and can only be accessed by authenticated users.
-    It displays the first records of a collection.
-    It's the main view of the deduplication process.
+    This view is the entry point for the deduplication workflow and requires user authentication.
+    It checks that the requested collection exists and that the user is authorized to access it.
+    If the collection is not found or access is denied, an appropriate HTTP error is returned.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+        col_name (str): The name of the collection to display.
+
+    Returns:
+        HttpResponse: Rendered HTML page for the collection, or an error response if not found or unauthorized.
     """
 
     # We check that the collection name provided in url exists
@@ -81,7 +95,7 @@ def collection(request: HttpRequest, col_name: str) -> HttpResponse:
         return HttpResponse(escape(f'Collection "{col_name}" not found'), status=404)
 
     # At least one group must be associated to the collection
-    if tools.is_col_allowed(col_name, request) is False:
+    if not tools.is_col_allowed(col_name, request):
         return HttpResponse("No right to access this collection", status=403)
 
     tools.refresh_match_type(col_name, mongo_db_dedup)
@@ -92,24 +106,18 @@ def collection(request: HttpRequest, col_name: str) -> HttpResponse:
 @login_required
 def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
     """
-    Get the record ids for a collection with a filter.
+    API endpoint to retrieve record IDs for a given collection, filtered by various criteria.
 
-    This view is an API returning the record ids for a collection with a filter.
-    Sorting is according to the `_id` field and not `rec_id`.
+    This view returns a JSON response containing the record IDs and the total number of records matching the filter.
+    Sorting is performed by the MongoDB '_id' field. Duplicate matches are handled with a dedicated aggregation pipeline.
 
-    Treatment for duplicated matches is special with a distinct pipeline.
-
-    Parameters:
-    -----------
-    request : HttpRequest
-        The HTTP request object containing the filter parameters.
-    col_name : str
-        The name of the collection to query.
+    Args:
+        request (HttpRequest): The HTTP request containing filter parameters (e.g., 'filter', 'next', 'recid').
+        col_name (str): The name of the collection to query.
 
     Returns:
-    --------
-    JsonResponse
-        A JSON response containing the record ids and the total number of records.
+        JsonResponse: JSON response with a list of record IDs, validation status, color (for UI alternation),
+        matched_record, and the total number of records.
     """
 
     # Get the filter from the request, using parameters
@@ -252,25 +260,18 @@ def get_local_record_ids(request: HttpRequest, col_name: str) -> JsonResponse:
 @login_required
 def local_rec(request, rec_id=None, col_name=None):
     """
-    Entry point when making an action on a local record.
+    API endpoint to retrieve or update a local record and its match status.
 
-    This view is an API that can be used to get or post a local
-    record. With a post request, the system will validate
-    matching records or cancel the validation.
+    - GET: Returns information about the local record and its possible matches.
+    - POST: Validates or cancels the validation of a match for the local record.
 
-    Parameters
-    ----------
-    request : HttpRequest
-        The HTTP request object.
-    rec_id : str, optional
-        The record ID of the local record.
-    col_name : str, optional
-        The name of the collection.
+    Args:
+        request (HttpRequest): The HTTP request object.
+        rec_id (str, optional): The local record ID.
+        col_name (str, optional): The collection name.
 
-    Returns
-    -------
-    HttpResponse
-        The HTTP response object.
+    Returns:
+        HttpResponse or JsonResponse: Response depending on the action performed (record data or operation status).
     """
     if request.method == 'GET':
         return get_local_rec(request, rec_id, col_name)
@@ -278,10 +279,13 @@ def local_rec(request, rec_id=None, col_name=None):
     if request.method == 'POST':
         return post_local_rec(request, rec_id, col_name)
 
+    return JsonResponse({'status': 'error'})
+
 
 @login_required
 def get_local_rec(request, rec_id, col_name, jsonresponse=True):
-    """Get a local record with its possible matches
+    """
+    Retrieve a local record and its possible matches, including similarity scores and details.
 
     Format of the response is:
         {
@@ -301,6 +305,16 @@ def get_local_rec(request, rec_id, col_name, jsonresponse=True):
         }
 
     Idea is to iterate the possible matches and get the data from the database.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+        rec_id (str, optional): The local record ID.
+        col_name (str, optional): The collection name.
+        jsonresponse (bool, optional): Whether to return a JSON response.
+
+    Returns:
+        JsonResponse or dict: A JSON response containing the local record and its possible matches, or a dictionary if jsonresponse is False.
+    
     """
 
     # Get the model used to calculate the similarity score
@@ -350,12 +364,21 @@ def get_local_rec(request, rec_id, col_name, jsonresponse=True):
 
 
 @login_required
-def post_local_rec(request, rec_id=None, col_name=None):
-    """Change selected matching record for a local record
+def post_local_rec(request, rec_id=None, col_name=None) -> JsonResponse:
+    """
+    API endpoint to update the selected matching record for a local record.
 
-    If the request body contains a JSON object with a key 'matched_record', it
-    will update the record with the given rec_id to have the matched_record. It can also
-    be used with an empty string to remove the matched record.
+    If the request body contains a JSON object with a key 'matched_record', this endpoint updates the record
+    with the given rec_id to have the specified matched_record. It can also be used with an empty string to remove the match.
+    The match type (match, duplicate_match, no_match) is updated accordingly for all affected records.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+        rec_id (str, optional): The record ID of the local record.
+        col_name (str, optional): The name of the collection.
+
+    Returns:
+        JsonResponse: Status of the operation.
     """
     matched_record = json.loads(request.body)['matched_record']
     recids_to_check_for_duplicate_match = []
@@ -402,10 +425,18 @@ def post_local_rec(request, rec_id=None, col_name=None):
 
 
 @login_required
-def add_to_training_data(request):
-    """Add current records pair in training data set
+def add_to_training_data(request) -> JsonResponse:
+    """
+    API endpoint to add a pair of records (local/NZ) to the training dataset.
 
-    This view is an API that can be used to add a pair of records in the training data set.
+    This endpoint receives a JSON payload with the local record ID, NZ record ID, and user decision.
+    It adds or updates the corresponding entry in the training data collection, including similarity score and match status.
+
+    Args:
+        request (HttpRequest): The HTTP request containing record IDs and user decision.
+
+    Returns:
+        JsonResponse: Status and message of the operation (added, updated, or error).
     """
     # Get the data from the request, it contains the local record id, the NZ record, id and the decision of the user
     data = json.loads(request.body)
@@ -433,7 +464,7 @@ def add_to_training_data(request):
     similarity_score = get_similarity_score(scores, method=selected_model)
 
     # Preparation of the document with the training data
-    # We use the json version of the full records
+    # We use the JSON version of the full records
     training_entry = {'local_fullrec': local_record['fullrec'],
                       'ext_nz_fullrec': nz_ext_rec['marc'],
                       'similarity_score': similarity_score,
@@ -454,8 +485,20 @@ def add_to_training_data(request):
 
 
 @login_required
-def get_matching_records(request, col_name=None):
-    """Get matching records for a collection"""
+def get_matching_records(request, col_name=None) -> HttpResponse:
+    """
+    API endpoint to export records with a match (match, duplicate_match, possible_match) for a collection.
+
+    This endpoint requires authentication. It returns an Excel file containing the matching records for the specified collection,
+    or redirects to the collection view if no results are found.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+        col_name (str, optional): The collection name.
+
+    Returns:
+        HttpResponse: Excel file for download or a redirect response.
+    """
 
     if col_name is not None:
         tools.refresh_match_type(col_name, mongo_db_dedup)
@@ -500,11 +543,20 @@ def get_matching_records(request, col_name=None):
 
     return response
 
-def login_view(request):
-    """Manage login of the user
+def login_view(request) -> HttpResponse:
+    """
+    Handle user authentication using Django's AuthenticationForm.
 
-    It uses the AuthenticationForm to authenticate the user.
-    If the user is authenticated, it will redirect to the index page.
+    This view manages the login process. If the user submits valid credentials, they are authenticated and redirected
+    to the index page. Otherwise, the login form is displayed again with errors if any.
+
+    Example response: Rendered login HTML page or HTTP redirect to the index page.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+
+    Returns:
+        HttpResponse: Rendered login page or redirect response.
     """
     # We check the method of the request, post is used to send the form
     # and get is used to display the form

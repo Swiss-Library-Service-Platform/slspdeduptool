@@ -91,7 +91,7 @@ def update(request, item_id=None, col_name=None):
         return redirect(redirect_url)
     zone = col_name.split('_')[0]
     item = Item(rec['mms_id'], rec['holding_id'], rec['item_id'], zone=zone, env='P')
-    if item.error is True:
+    if item.error:
         col.update_one({'item_id': item_id}, {'$set': {'new_barcode': None, 'error': True}})
         redirect_url = reverse(
             "callnumber_to_barcode:collection",
@@ -107,7 +107,7 @@ def update(request, item_id=None, col_name=None):
         item.data.find('item_data/barcode').text = rec['barcode']
         col.update_one({'item_id': item_id}, {'$set': {'new_barcode': None, 'error': True}})
     item.update()
-    if item.error is True:
+    if item.error:
         col.update_one({'item_id': item_id}, {'$set': {'new_barcode': None, 'error': True}})
 
     redirect_url = reverse(
