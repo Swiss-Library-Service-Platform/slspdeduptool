@@ -79,6 +79,17 @@
         </h4>
     </div>
 
+    <div class="container-fluid my-5">
+        <h4 class="mt-5">
+            SLSPstaff backend up:
+            {% if is_slspstaff_live %}
+            <span class="badge bg-success">OK</span>
+            {% else %}
+            <span class="badge bg-danger">CRITICAL</span>
+            {% endif %}
+        </h4>
+    </div>
+
     {% for service in data %}
     <div class="container-fluid my-5">
         <h4 class="mt-5">{{ service.name }}

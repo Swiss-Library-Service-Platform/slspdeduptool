@@ -104,6 +104,18 @@ def get_current_api_threshold():
     return {'status': status, 'remaining_api_calls': remaining_api_calls}
 
 
+def get_slspstaff_status():
+    """Check status of SLSP staff.
+
+    Returns:
+        bool: True if SLSP staff is live, False otherwise.
+    """
+    r = requests.get('https://staff.swisscovery.network/health')
+    if r.ok:
+        if r.json() == {"status":"UP","service":"slsp-staff-backend"}:
+            return True
+    return False
+
 def get_job_status(task: dict, col: str) -> str:
     """Get the status of a job based on its last run date.
 
@@ -240,7 +252,9 @@ def services_status(request: HttpRequest) -> HttpResponse:
 
     api_threshold = get_current_api_threshold()
 
-    context = {'data': data, 'cols': cols, 'api_threshold': api_threshold}
+    is_slspstaff_live = get_slspstaff_status()
+
+    context = {'data': data, 'cols': cols, 'api_threshold': api_threshold, 'is_slspstaff_live': is_slspstaff_live}
     # 'api_threshold_status': api_threshold['status'],
     # 'remaining_api_calls': api_threshold['remaining_api_calls'],
 
