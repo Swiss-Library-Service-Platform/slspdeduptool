@@ -20,10 +20,11 @@
 		{% endif %}
 	</p>
 
-	<form method="post" class="card card-body" style="max-width: 560px;">
+	<form method="post" class="card card-body" style="max-width: 560px;" autocomplete="off">
 		{% csrf_token %}
 		<label for="token" class="form-label">Token</label>
-		<input type="text" id="token" name="token" class="form-control mb-3" placeholder="Enter a token">
+		<input type="password" id="token" name="token" class="form-control mb-3" placeholder="Enter a token"
+			   autocomplete="off" spellcheck="false" autocapitalize="off">
 
 		<button type="submit" class="btn btn-primary">
 			Toggle letter status
@@ -32,4 +33,3 @@
 </div>
 </body>
 </html>
-
