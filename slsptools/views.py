@@ -112,7 +112,7 @@ def get_slspstaff_status():
     """
     r = requests.get('https://staff.swisscovery.network/health')
     if r.ok:
-        if r.json() == {"status":"UP","service":"slsp-staff-backend"}:
+        if r.json() == {"status":"UP","service":"slsp-staff-backend", "database":"UP"}:
             return True
     return False
 
