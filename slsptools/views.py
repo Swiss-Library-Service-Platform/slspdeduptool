@@ -277,7 +277,7 @@ def toggle_one_login_token_letter(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         if request.method == "POST":
             token = request.POST.get("token", "").strip()
-            if token != settings.IZ_ONE_LOOGIN_LETTER_TOKEN:
+            if token != settings.IZ_ONE_LOGIN_LETTER_TOKEN:
                 return HttpResponse("Token is incorrect")
 
             letter.enabled = not letter.enabled
