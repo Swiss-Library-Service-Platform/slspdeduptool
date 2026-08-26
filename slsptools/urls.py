@@ -23,6 +23,8 @@ urlpatterns = [
     path('callnumber_to_barcode/', include('callnumber_to_barcode.urls')),
     path('admin/', admin.site.urls),
     path('', views.index, name="index"),
+    path('slspstafftool/', include('slspstafftool.urls')),
+
 
     # OIDC authentication endpoints
     path('oidc/', include('mozilla_django_oidc.urls')),
