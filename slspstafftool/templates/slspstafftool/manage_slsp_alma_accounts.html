@@ -1,10 +1,89 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+    {% include 'slspstafftool/_head.html' %}
+    <title>Manage SLSP Alma accounts</title>
 </head>
 <body>
+<div class="container-fluid py-3">
+    <header>
+        <div class="row mb-3 align-items-center">
+            <div class="col-10">
+                <h1>SLSP staff tools - Manage SLSP Alma accounts</h1>
+            </div>
+            {% include 'slsptools/_login_links.html' %}
+        </div>
+    </header>
+    <main>
+        {% if messages %}
+            <div class="row mb-3">
+                <div class="col-lg-10 col-sm-12">
+                    {% for message in messages %}
+                        <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %} mb-2" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
 
+        <div class="row g-4">
+            <div class="col-lg-5 col-md-6 col-sm-12">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Add account</h2>
+                        <form method="post" class="d-grid gap-3">
+                            {% csrf_token %}
+                            <div>
+                                <label for="primary_id" class="form-label">Primary ID</label>
+                                <input type="text" class="form-control" id="primary_id" name="primary_id" required>
+                            </div>
+                            <div>
+                                <label for="first_name" class="form-label">First name</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                            </div>
+                            <div>
+                                <label for="last_name" class="form-label">Last name</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                            </div>
+                            <div>
+                                <label for="model_primary_id" class="form-label">Model primary ID</label>
+                                <input type="text" class="form-control" id="model_primary_id" name="model_primary_id" required>
+                            </div>
+                            <div class="pt-1">
+                                <button type="submit" class="btn btn-primary">Add</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5 col-md-6 col-sm-12">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Existing primary IDs</h2>
+                        <ul class="list-group list-group-flush">
+                        {% for primary_id in primary_ids %}
+                            <li class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-center gap-2">
+                                    <span class="text-break">{{ primary_id }}</span>
+                                    <form method="post" class="m-0" onsubmit="return confirm('Delete ' + '{{ primary_id }}' + ' ?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="delete_primary_id" value="{{ primary_id }}">
+                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<script>csrf_token = "{{ csrf_token }}";</script>
 </body>
-</html>
+ </html>

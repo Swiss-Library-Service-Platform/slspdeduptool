@@ -14,7 +14,8 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 # from django.views.generic import TemplateView
 from pymongo import MongoClient, DESCENDING
-
+from almapiwrapper.configlog import config_log
+config_log()
 
 def is_staff(user):
     """Check if the user is an admin user."""

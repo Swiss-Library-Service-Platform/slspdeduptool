@@ -3,17 +3,23 @@ import ast
 import json
 import os
 
+from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, reverse, redirect
 from pymongo import MongoClient
 
 from almapiwrapper.config import Library
-
+from almapiwrapper.users import User, NewUser, fetch_users, fetch_user_in_all_iz
+from almapiwrapper.configlog import config_log
+config_log()
 
 LIBRARY_STATUS_MONGO_URI_ENV = "mongodb_closed_library_automation_uri"
 LIBRARY_STATUS_MONGO_DB_ENV = "mongodb_closed_library_automation_db"
 LIBRARY_STATUS_MONGO_COLLECTION_ENV = "mongodb_closed_library_automation_collection"
 
+def is_staff(user):
+    """Check if the user is an admin user."""
+    return user.is_staff
 
 def save_library_status_snapshot(values: dict, library_payload: dict) -> None:
     """Persist a timestamped library status snapshot into MongoDB."""
@@ -45,8 +51,22 @@ def save_library_status_snapshot(values: dict, library_payload: dict) -> None:
     }
     collection.insert_one(document)
 
-
 def index(request: HttpRequest) -> HttpResponse:
+    if not request.user.is_authenticated:
+        login_url = reverse('login_view')
+        return redirect(f"{login_url}?next={request.path}")
+    if not is_staff(request.user):
+        return render(request, 'slsptools/authentication_error.html', status=403)
+
+    return render(request, "slspstafftool/index.html", {})
+
+def close_library(request: HttpRequest) -> HttpResponse:
+    if not request.user.is_authenticated:
+        login_url = reverse('login_view')
+        return redirect(f"{login_url}?next={request.path}")
+    if not is_staff(request.user):
+        return render(request, 'slsptools/authentication_error.html', status=403)
+
     values = {
         "from_date_str": "",
         "to_date_str": "",
@@ -82,8 +102,8 @@ def index(request: HttpRequest) -> HttpResponse:
                 except ValueError:
                     errors.append(f"{date_field} must be in YYYY-MM-DD format.")
 
-        if values["env_type"] and values["env_type"] not in ["S", "P", "T"]:
-            errors.append("env_type must be S, P, or T.")
+        if values["env_type"] and values["env_type"] not in ["S", "P"]:
+            errors.append("env_type must be S, P")
 
         if not errors:
             submitted = values.copy()
@@ -141,7 +161,7 @@ def index(request: HttpRequest) -> HttpResponse:
 
     return render(
         request,
-        "slspstafftool/index.html",
+        "slspstafftool/close_library.html",
         {
             "values": values,
             "errors": errors,
@@ -151,4 +171,46 @@ def index(request: HttpRequest) -> HttpResponse:
             "save_status_ok": save_status_ok,
             "save_status_error": save_status_error,
         },
+    )
+
+def manage_slsp_alma_accounts(request: HttpRequest) -> HttpResponse:
+    if not request.user.is_authenticated:
+        login_url = reverse('login_view')
+        return redirect(f"{login_url}?next={request.path}")
+    if not is_staff(request.user):
+        return render(request, 'slsptools/authentication_error.html', status=403)
+
+    env = 'S' if os.getenv('django_env') == 'dev' else 'P'
+
+    if request.method == 'POST' and request.POST.get('action') == 'delete':
+        primary_id_to_delete = request.POST.get('delete_primary_id', '').strip()
+        if not primary_id_to_delete:
+            messages.error(request, 'Primary ID is required for deletion.')
+            return redirect('slspstafftool:manage_slsp_alma_accounts')
+
+        try:
+            users_to_delete = fetch_user_in_all_iz(primary_id_to_delete, env)
+            users_to_delete.append(User(primary_id_to_delete, zone='NZ', env=env))  # Ensure NZ user is included
+            for user in users_to_delete:
+                repr_user = repr(user)
+                u = user.delete()
+                if u is None:
+                    messages.success(request, f"Account '{repr_user}' deleted.")
+                else:
+                    messages.error(request, f"Account '{repr_user}' could not be deleted: {user.error_msg}.")
+
+        except Exception as exc:
+            messages.error(request, f"Could not delete account '{primary_id_to_delete}': {exc}")
+
+        return redirect('slspstafftool:manage_slsp_alma_accounts')
+
+    primary_ids = sorted(
+        [user.primary_id for user in fetch_users(q='primary_id~@slsp.ch', zone='NZ', env=env)],
+        key=str.lower,
+    )
+
+    return render(
+        request,
+        "slspstafftool/manage_slsp_alma_accounts.html",
+        {'primary_ids': primary_ids}
     )

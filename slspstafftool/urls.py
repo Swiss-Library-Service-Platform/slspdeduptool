@@ -10,4 +10,6 @@ app_name = "slspstafftool"
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("close_library", views.close_library, name="close_library"),
+    path('manage_slsp_alma_accounts', views.manage_slsp_alma_accounts, name='manage_slsp_alma_accounts'),
 ]
