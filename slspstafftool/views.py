@@ -1,7 +1,9 @@
 from datetime import datetime
 import ast
+from copy import deepcopy
 import json
 import os
+import time
 
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
@@ -11,6 +13,9 @@ from pymongo import MongoClient
 from almapiwrapper.config import Library
 from almapiwrapper.users import User, NewUser, fetch_users, fetch_user_in_all_iz
 from almapiwrapper.configlog import config_log
+from almapiwrapper.apikeys import ApiKeys
+from almapiwrapper.record import JsonData
+
 config_log()
 
 LIBRARY_STATUS_MONGO_URI_ENV = "mongodb_closed_library_automation_uri"
@@ -182,6 +187,43 @@ def manage_slsp_alma_accounts(request: HttpRequest) -> HttpResponse:
 
     env = 'S' if os.getenv('django_env') == 'dev' else 'P'
 
+    if request.method == 'POST' and request.POST.get('action') == 'add':
+        primary_id = request.POST.get('primary_id', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        model_primary_id = request.POST.get('model_primary_id', '').strip()
+
+        if not all([primary_id, first_name, last_name, model_primary_id]):
+            messages.error(request, 'All fields are required to prepare account creation.')
+            return redirect('slspstafftool:manage_slsp_alma_accounts')
+
+        # Copy eduid account to all zones for the given primary_id
+
+
+        try:
+            zones = ['UBS', 'HPH', 'ISR', 'NZ']
+            create_account(request, primary_id, first_name, last_name, model_primary_id, zones, 'S')
+
+            if env == 'P':
+                zones = ApiKeys().get_iz_codes()
+                zones.append('NZ')
+                users = [u for u in fetch_users(q=f'email~{primary_id}', zone='NZ') if
+                         u.primary_id.endswith('eduid.ch')]
+                if len(users) == 1:
+                    eduid = users[0].primary_id
+                    for zone in zones:
+                        _ = User(eduid, zone).data
+                else:
+                    messages.error(request,
+                                   f"Could not find a unique eduid account for primary_id '{primary_id}'. Found {len(users)} accounts.")
+                    return redirect('slspstafftool:manage_slsp_alma_accounts')
+                create_account(request, primary_id, first_name, last_name, model_primary_id, zones, 'P')
+
+
+        except Exception as exc:
+            messages.error(request, f"Could not create account: {exc}")
+
+
     if request.method == 'POST' and request.POST.get('action') == 'delete':
         primary_id_to_delete = request.POST.get('delete_primary_id', '').strip()
         if not primary_id_to_delete:
@@ -189,8 +231,12 @@ def manage_slsp_alma_accounts(request: HttpRequest) -> HttpResponse:
             return redirect('slspstafftool:manage_slsp_alma_accounts')
 
         try:
-            users_to_delete = fetch_user_in_all_iz(primary_id_to_delete, env)
-            users_to_delete.append(User(primary_id_to_delete, zone='NZ', env=env))  # Ensure NZ user is included
+            users_to_delete = fetch_user_in_all_iz(primary_id_to_delete, 'S')
+            users_to_delete.append(User(primary_id_to_delete, zone='NZ', env='S')) # Ensure NZ user is included
+            if env == 'P':
+                users_to_delete += fetch_user_in_all_iz(primary_id_to_delete, 'P')
+                users_to_delete.append(User(primary_id_to_delete, zone='NZ', env='P'))  # Ensure NZ user is included
+
             for user in users_to_delete:
                 repr_user = repr(user)
                 u = user.delete()
@@ -214,3 +260,58 @@ def manage_slsp_alma_accounts(request: HttpRequest) -> HttpResponse:
         "slspstafftool/manage_slsp_alma_accounts.html",
         {'primary_ids': primary_ids}
     )
+
+def create_account(request, primary_id, first_name, last_name, model_primary_id, zones, env):
+    for z in zones:
+        if z == 'NZ':
+            time.sleep(5)
+        copy_account = User(model_primary_id, z, env)
+        data = deepcopy(JsonData(copy_account.data))
+        data.content['primary_id'] = primary_id
+        data.content['first_name'] = first_name + ' (SLSP)'
+        data.content['last_name'] = last_name
+        data.content['contact_info']['email'][0]['email_address'] = primary_id
+        seen = set()
+        dedup_user_roles = []
+        user_roles = data.content.get('user_roles', [])
+        for d in user_roles:
+            key = json.dumps(d, sort_keys=True)
+            if key not in seen:
+                seen.add(key)
+                dedup_user_roles.append(d)
+        data.content['user_roles'] = dedup_user_roles
+        print('ORIGINAL DATA: ', len(str(data.content)))
+        data.content = remove_desc_fields(data.content)
+        print('NEW DATA: ', len(str(data.content)))
+
+        u = NewUser(z, env=env, data=data)
+
+        new_u = u.create()
+
+        if new_u.error:
+            messages.error(request, f"Could not create account in {z} ({env}): {new_u.error_msg}")
+        else:
+            messages.success(request, f"Account created in {z} ({env}): {new_u.primary_id}")
+
+def remove_desc_fields(data):
+    """Remove recursively every key named ``desc`` from a nested structure.
+
+    Parameters:
+    -----------
+    data : Any
+        A nested Python structure composed of dict, list and scalar values.
+
+    Returns:
+    --------
+    Any
+        A cleaned copy of the input structure without any ``desc`` keys.
+    """
+    if isinstance(data, dict):
+        return {
+            key: remove_desc_fields(value)
+            for key, value in data.items()
+            if key != 'desc'
+        }
+    if isinstance(data, list):
+        return [remove_desc_fields(item) for item in data]
+    return data

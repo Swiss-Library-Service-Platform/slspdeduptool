@@ -35,6 +35,7 @@
                         <h2 class="h5 mb-3">Add account</h2>
                         <form method="post" class="d-grid gap-3">
                             {% csrf_token %}
+                            <input type="hidden" name="action" value="add">
                             <div>
                                 <label for="primary_id" class="form-label">Primary ID</label>
                                 <input type="text" class="form-control" id="primary_id" name="primary_id" required>
