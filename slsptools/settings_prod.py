@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'slsptools',
     'dedup',
     'callnumber_to_barcode',
+    'slspstafftool',
 ]
 
 MIDDLEWARE = [
