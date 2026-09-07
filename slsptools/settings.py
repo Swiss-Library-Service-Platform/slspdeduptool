@@ -8,6 +8,7 @@ import os
 # from django.conf.global_settings import STATIC_ROOT
 from dotenv import load_dotenv
 from pathlib import Path
+from almapiwrapper.configlog import config_log
 
 # Load environment variables from .env file
 load_dotenv()
@@ -15,6 +16,11 @@ load_dotenv()
 # Base directory of the project is different in development and production
 # We need twice .parent in development and only once in production
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Create log directory if it doesn't exist
+LOG_DIR = BASE_DIR / 'log'
+LOG_DIR.mkdir(exist_ok=True)
+config_log(str(LOG_DIR / 'slsptools_sb.log'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -141,3 +147,4 @@ OIDC_CREATE_USER = False
 
 IZS_WITH_ACTIVE_MFA = ['NZ', 'HPH']
 IZ_ONE_LOGIN_LETTER_TOKEN = os.getenv('IZ_ONE_LOGIN_LETTER_TOKEN')
+

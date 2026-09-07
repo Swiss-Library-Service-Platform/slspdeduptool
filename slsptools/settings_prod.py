@@ -6,10 +6,16 @@ No need of dotenv in production.
 """
 import os
 from pathlib import Path
+from almapiwrapper.configlog import config_log
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent #.parent
 
+# Create log directory if it doesn't exist
+LOG_DIR = BASE_DIR / 'log'
+LOG_DIR.mkdir(exist_ok=True)
+config_log(str(LOG_DIR / 'slsptools_prod.log'))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 

@@ -12,11 +12,8 @@ from pymongo import MongoClient
 
 from almapiwrapper.config import Library
 from almapiwrapper.users import User, NewUser, fetch_users, fetch_user_in_all_iz
-from almapiwrapper.configlog import config_log
 from almapiwrapper.apikeys import ApiKeys
 from almapiwrapper.record import JsonData
-
-config_log()
 
 LIBRARY_STATUS_MONGO_URI_ENV = "mongodb_closed_library_automation_uri"
 LIBRARY_STATUS_MONGO_DB_ENV = "mongodb_closed_library_automation_db"
