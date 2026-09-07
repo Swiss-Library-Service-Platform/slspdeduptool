@@ -280,9 +280,7 @@ def create_account(request, primary_id, first_name, last_name, model_primary_id,
                 seen.add(key)
                 dedup_user_roles.append(d)
         data.content['user_roles'] = dedup_user_roles
-        print('ORIGINAL DATA: ', len(str(data.content)))
         data.content = remove_desc_fields(data.content)
-        print('NEW DATA: ', len(str(data.content)))
 
         u = NewUser(z, env=env, data=data)
 
