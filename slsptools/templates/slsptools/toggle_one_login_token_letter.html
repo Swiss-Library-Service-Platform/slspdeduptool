@@ -12,14 +12,45 @@
 	<h1 class="mb-4">One-time token letter</h1>
 
 	<p class="mb-4">
-		Current status:
+		Current NZ status:
 		{% if enabled %}
 		<span class="badge bg-success">ACTIVE</span>
 		{% else %}
 		<span class="badge bg-secondary">INACTIVE</span>
 		{% endif %}
 	</p>
+</div>
+{% if result %}
+<div class="container py-4">
+	<div class="card card-body mt-4" style="max-width: 560px;">
+		<h2 class="h5 mb-3">Update Results</h2>
+		<table class="table table-sm table-striped">
+			<thead class="table-light">
+				<tr>
+					<th>IZ</th>
+					<th>Status</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for iz, status in result.items %}
+				<tr>
+					<td><strong>{{ iz }}</strong></td>
+					<td>
+						{% if status %}
+						<span class="badge bg-success">ACTIVE</span>
+						{% else %}
+						<span class="badge bg-secondary">INACTIVE</span>
+						{% endif %}
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+</div>
+{% endif %}
 
+<div class="container py-4">
 	<form method="post" class="card card-body" style="max-width: 560px;" autocomplete="off">
 		{% csrf_token %}
 		<label for="token" class="form-label">Token</label>

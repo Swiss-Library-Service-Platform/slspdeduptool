@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # Load environment variables from .env file
-load_dotenv()
+# Load from the slsptools directory where .env is located
+load_dotenv(Path(__file__).resolve().parent / '.env')
 
 # Base directory of the project is different in development and production
 # We need twice .parent in development and only once in production

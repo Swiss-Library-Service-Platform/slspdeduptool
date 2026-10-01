@@ -270,20 +270,29 @@ def toggle_one_login_token_letter(request: HttpRequest) -> HttpResponse:
     Returns:
 
     """
-    for iz in settings.IZS_WITH_ACTIVE_MFA:
-        pass
 
-    letter = Letter('LoginUsingOneTimeTokenLetter', 'NZ', 'P')
+    env = 'S' if os.getenv('django_env') == 'dev' else 'P'
+    nz_letter = Letter('LoginUsingOneTimeTokenLetter', 'NZ', env)
+    result = dict()
     if request.method == 'POST':
         if request.method == "POST":
             token = request.POST.get("token", "").strip()
             if token != settings.IZ_ONE_LOGIN_LETTER_TOKEN:
+                print(settings.IZ_ONE_LOGIN_LETTER_TOKEN)
                 return HttpResponse("Token is incorrect")
 
-            letter.enabled = not letter.enabled
-            letter.update()
+            nz_letter.enabled = not nz_letter.enabled
+            nz_letter.update()
 
-    context = {'enabled': letter.enabled}
+            for iz in settings.IZS_WITH_ACTIVE_MFA:
+                if iz == 'NZ':
+                    continue
+                letter = Letter('LoginUsingOneTimeTokenLetter', iz, env)
+                letter.enabled = nz_letter.enabled
+                letter.update()
+                result[iz] = letter.enabled
+
+    context = {'enabled': nz_letter.enabled, 'result' : result}
     return render(request, 'slsptools/toggle_one_login_token_letter.html', context)
 
     letter = Letter('LoginUsingOneTimeTokenLetter', 'NZ', 'P')
