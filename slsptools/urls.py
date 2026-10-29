@@ -16,11 +16,22 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic.base import RedirectView
 from . import views
+from django.conf import settings
 
-urlpatterns = [
+
+
+# In local development, we want to allow access to the admin interface without requiring login.
+if settings.DEBUG:
+    urlpatterns = []
+else:
+    urlpatterns = [path('admin/login/', RedirectView.as_view(url='/login?next=/admin/', permanent=False, query_string=True))]
+
+urlpatterns += [
     path('dedup/', include('dedup.urls')),
     path('callnumber_to_barcode/', include('callnumber_to_barcode.urls')),
+
     path('admin/', admin.site.urls),
     path('', views.index, name="index"),
     path('slspstafftool/', include('slspstafftool.urls')),

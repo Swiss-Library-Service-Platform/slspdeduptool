@@ -38,7 +38,7 @@ def login_view(request):
     Redirects to the OIDC login endpoint with a 'next' parameter for the current page,
     using Django's reverse lookup for robustness.
     """
-    if request.method == 'POST':
+    if request.method == 'POST' and settings.DEBUG:
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             username = form.cleaned_data.get('username')

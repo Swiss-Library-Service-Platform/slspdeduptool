@@ -438,6 +438,12 @@ def add_to_training_data(request) -> JsonResponse:
     Returns:
         JsonResponse: Status and message of the operation (added, updated, or error).
     """
+
+    # Only staff members are allowed to add training data
+    if not request.user.is_staff:
+        return JsonResponse({'status': 'error', 'message': 'User is not authorized to add training data'},
+                            status=403)
+
     # Get the data from the request, it contains the local record id, the NZ record, id and the decision of the user
     data = json.loads(request.body)
 
@@ -447,13 +453,13 @@ def add_to_training_data(request) -> JsonResponse:
     # Get the local record from the database
     local_record = mongo_db_dedup[data['col_name']].find_one({'rec_id': sanitize(data['local_recid'])}, {'_id': False})
     if len(local_record['fullrec']) == 0:
-        return JsonResponse({'status': 'error', 'message': 'Local record has no full record'})
+        return JsonResponse({'status': 'error', 'message': 'Local record has no full record'}, status=400)
     
     briefrec = RawBriefRec(local_record['briefrec'])
 
     # Check if the nz fetched record is in the possible matches
     if data['ext_nz_recid'] not in local_record['possible_matches']:
-        return JsonResponse({'status': 'error', 'message': 'External record not found in possible matches'})
+        return JsonResponse({'status': 'error', 'message': 'External record not found in possible matches'}, status=400)
 
     # Get the NZ record from the database
     nz_ext_rec = mongo_col_nz.find_one({'mms_id': sanitize(data['ext_nz_recid'])}, {'_id': False})
