@@ -6,6 +6,7 @@ from almapiwrapper import ApiKeys
 from almapiwrapper.config import Letter
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
+from django.utils.http import url_has_allowed_host_and_scheme
 # from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.cache import cache
@@ -50,6 +51,12 @@ def login_view(request):
 
     oidc_login_url = reverse('oidc_authentication_init')
     next_url = request.GET.get('next', '/')
+    if not url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+    ):
+        next_url = '/'
 
     return redirect(f"{oidc_login_url}?next={next_url}")
 
@@ -295,5 +302,5 @@ def toggle_one_login_token_letter(request: HttpRequest) -> HttpResponse:
     context = {'enabled': nz_letter.enabled, 'result' : result}
     return render(request, 'slsptools/toggle_one_login_token_letter.html', context)
 
-    letter = Letter('LoginUsingOneTimeTokenLetter', 'NZ', 'P')
-    return HttpResponse(f"One login token letter is enabled: {letter.enabled}")
+    # letter = Letter('LoginUsingOneTimeTokenLetter', 'NZ', 'P')
+    # return HttpResponse(f"One login token letter is enabled: {letter.enabled}")
