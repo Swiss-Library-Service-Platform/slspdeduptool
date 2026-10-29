@@ -50,17 +50,8 @@ def login_view(request):
                 return redirect('index')
 
     oidc_login_url = reverse('oidc_authentication_init')
-    next_url = request.GET.get('next', '/')
-    if not url_has_allowed_host_and_scheme(
-            next_url,
-            allowed_hosts={request.get_host()},
-            require_https=request.is_secure(),
-    ):
-        next_url = '/'
-
-    params = QueryDict('', mutable=True)
-    params['next'] = next_url
-    return redirect(f"{oidc_login_url}?{params.urlencode()}")
+    next_url = request.build_absolute_uri(request.get_full_path())
+    return redirect(f"{oidc_login_url}?next={next_url}")
 
 
 def logout_view(request):
@@ -197,19 +188,8 @@ def services_status(request: HttpRequest) -> HttpResponse:
     """
     if not request.user.is_authenticated:
         login_url = reverse('login_view')
-
-        next_url = request.path
-        if not url_has_allowed_host_and_scheme(
-                next_url,
-                allowed_hosts={request.get_host()},
-                require_https=request.is_secure(),
-        ):
-            next_url = '/'
-
-        params = QueryDict('', mutable=True)
-        params['next'] = next_url
-
-        return redirect(f"{login_url}?next={params.urlencode()}")
+        next_url = request.build_absolute_uri(request.get_full_path())
+        return redirect(f"{login_url}?next={next_url}")
 
     if not is_staff(request.user):
         return render(request, 'slsptools/authentication_error.html', status=403)
