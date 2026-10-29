@@ -197,7 +197,20 @@ def services_status(request: HttpRequest) -> HttpResponse:
     """
     if not request.user.is_authenticated:
         login_url = reverse('login_view')
-        return redirect(f"{login_url}?next={request.path}")
+
+        next_url = request.path
+        if not url_has_allowed_host_and_scheme(
+                next_url,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+        ):
+            next_url = '/'
+
+        params = QueryDict('', mutable=True)
+        params['next'] = next_url
+
+        return redirect(f"{login_url}?next={params.urlencode()}")
+
     if not is_staff(request.user):
         return render(request, 'slsptools/authentication_error.html', status=403)
 
