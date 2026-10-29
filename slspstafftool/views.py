@@ -4,6 +4,7 @@ from copy import deepcopy
 import json
 import os
 import time
+from urllib.parse import quote as urlquote
 
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
@@ -56,7 +57,7 @@ def index(request: HttpRequest) -> HttpResponse:
     if not request.user.is_authenticated:
         login_url = reverse('login_view')
         next_url = safe_next_url(request)
-        return redirect(f"{login_url}?next={next_url}")
+        return redirect(f"{login_url}?next={urlquote(next_url)}")
     if not is_staff(request.user):
         return render(request, 'slsptools/authentication_error.html', status=403)
 
@@ -66,7 +67,7 @@ def close_library(request: HttpRequest) -> HttpResponse:
     if not request.user.is_authenticated:
         login_url = reverse('login_view')
         next_url = safe_next_url(request)
-        return redirect(f"{login_url}?next={next_url}")
+        return redirect(f"{login_url}?next={urlquote(next_url)}")
     if not is_staff(request.user):
         return render(request, 'slsptools/authentication_error.html', status=403)
 
