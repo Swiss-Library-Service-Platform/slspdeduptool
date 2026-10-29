@@ -55,7 +55,7 @@ def save_library_status_snapshot(values: dict, library_payload: dict) -> None:
 def index(request: HttpRequest) -> HttpResponse:
     if not request.user.is_authenticated:
         login_url = reverse('login_view')
-        next_url = request.build_absolute_uri(request.get_full_path())
+        next_url = safe_next_url(request)
         return redirect(f"{login_url}?next={next_url}")
     if not is_staff(request.user):
         return render(request, 'slsptools/authentication_error.html', status=403)
@@ -65,7 +65,7 @@ def index(request: HttpRequest) -> HttpResponse:
 def close_library(request: HttpRequest) -> HttpResponse:
     if not request.user.is_authenticated:
         login_url = reverse('login_view')
-        next_url = request.build_absolute_uri(request.get_full_path())
+        next_url = safe_next_url(request)
         return redirect(f"{login_url}?next={next_url}")
     if not is_staff(request.user):
         return render(request, 'slsptools/authentication_error.html', status=403)
@@ -179,7 +179,7 @@ def close_library(request: HttpRequest) -> HttpResponse:
 def manage_slsp_alma_accounts(request: HttpRequest) -> HttpResponse:
     if not request.user.is_authenticated:
         login_url = reverse('login_view')
-        next_url = request.build_absolute_uri(request.get_full_path())
+        next_url = safe_next_url(request)
         return redirect(f"{login_url}?next={next_url}")
     if not is_staff(request.user):
         return render(request, 'slsptools/authentication_error.html', status=403)
