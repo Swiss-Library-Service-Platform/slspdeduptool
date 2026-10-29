@@ -1,5 +1,6 @@
 import os
 from datetime import timedelta, datetime
+from urllib.parse import urlencode
 
 import requests
 from almapiwrapper import ApiKeys
@@ -15,6 +16,25 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 # from django.views.generic import TemplateView
 from pymongo import MongoClient, DESCENDING
+
+
+def _safe_next_url(request: HttpRequest, fallback: str = '/') -> str:
+    if request.path.startswith('/login/') or request.path.startswith('/oidc/'):
+        return request.build_absolute_uri(fallback)
+
+    next_url = request.get_full_path() or fallback
+    if next_url.startswith('/login/') or next_url.startswith('/oidc/'):
+        next_url = fallback
+
+    absolute_next = request.build_absolute_uri(next_url)
+    if not url_has_allowed_host_and_scheme(
+        absolute_next,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        absolute_next = request.build_absolute_uri(fallback)
+
+    return absolute_next
 
 
 def is_staff(user):
@@ -50,8 +70,8 @@ def login_view(request):
                 return redirect('index')
 
     oidc_login_url = reverse('oidc_authentication_init')
-    next_url = request.build_absolute_uri(request.get_full_path())
-    return redirect(f"{oidc_login_url}?next={next_url}")
+    next_url = request.GET.get('next') or _safe_next_url(request)
+    return redirect(f"{oidc_login_url}?{urlencode({'next': next_url})}")
 
 
 def logout_view(request):
@@ -188,8 +208,8 @@ def services_status(request: HttpRequest) -> HttpResponse:
     """
     if not request.user.is_authenticated:
         login_url = reverse('login_view')
-        next_url = request.build_absolute_uri(request.get_full_path())
-        return redirect(f"{login_url}?next={next_url}")
+        next_url = _safe_next_url(request, fallback='/services_status/')
+        return redirect(f"{login_url}?{urlencode({'next': next_url})}")
 
     if not is_staff(request.user):
         return render(request, 'slsptools/authentication_error.html', status=403)
