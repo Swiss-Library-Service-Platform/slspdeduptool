@@ -7,39 +7,16 @@ from almapiwrapper import ApiKeys
 from almapiwrapper.config import Letter
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.utils.http import url_has_allowed_host_and_scheme
+
 # from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.cache import cache
-from django.http import HttpResponse, HttpRequest, HttpResponseRedirect, QueryDict
+from django.http import HttpResponse, HttpRequest
 from django.shortcuts import render, redirect
 from django.urls import reverse
 # from django.views.generic import TemplateView
 from pymongo import MongoClient, DESCENDING
-
-
-def _safe_next_url(request: HttpRequest, fallback: str = '/') -> str:
-    if request.path.startswith('/login/') or request.path.startswith('/oidc/'):
-        return request.build_absolute_uri(fallback)
-
-    next_url = request.get_full_path() or fallback
-    if next_url.startswith('/login/') or next_url.startswith('/oidc/'):
-        next_url = fallback
-
-    absolute_next = request.build_absolute_uri(next_url)
-    if not url_has_allowed_host_and_scheme(
-        absolute_next,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        absolute_next = request.build_absolute_uri(fallback)
-
-    return absolute_next
-
-
-def is_staff(user):
-    """Check if the user is an admin user."""
-    return user.is_staff
+from slsptools.utils import is_staff, safe_next_url
 
 
 def index(request: HttpRequest) -> HttpResponse:
@@ -70,7 +47,7 @@ def login_view(request):
                 return redirect('index')
 
     oidc_login_url = reverse('oidc_authentication_init')
-    next_url = request.GET.get('next') or _safe_next_url(request)
+    next_url = request.GET.get('next') or safe_next_url(request)
     return redirect(f"{oidc_login_url}?{urlencode({'next': next_url})}")
 
 
@@ -208,7 +185,7 @@ def services_status(request: HttpRequest) -> HttpResponse:
     """
     if not request.user.is_authenticated:
         login_url = reverse('login_view')
-        next_url = _safe_next_url(request, fallback='/services_status/')
+        next_url = safe_next_url(request, fallback='/services_status/')
         return redirect(f"{login_url}?{urlencode({'next': next_url})}")
 
     if not is_staff(request.user):

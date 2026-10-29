@@ -9,19 +9,18 @@ from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, reverse, redirect
 from pymongo import MongoClient
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from almapiwrapper.config import Library
 from almapiwrapper.users import User, NewUser, fetch_users, fetch_user_in_all_iz
 from almapiwrapper.apikeys import ApiKeys
 from almapiwrapper.record import JsonData
+from slsptools.utils import is_staff, safe_next_url
 
 LIBRARY_STATUS_MONGO_URI_ENV = "mongodb_closed_library_automation_uri"
 LIBRARY_STATUS_MONGO_DB_ENV = "mongodb_closed_library_automation_db"
 LIBRARY_STATUS_MONGO_COLLECTION_ENV = "mongodb_closed_library_automation_collection"
 
-def is_staff(user):
-    """Check if the user is an admin user."""
-    return user.is_staff
 
 def save_library_status_snapshot(values: dict, library_payload: dict) -> None:
     """Persist a timestamped library status snapshot into MongoDB."""
