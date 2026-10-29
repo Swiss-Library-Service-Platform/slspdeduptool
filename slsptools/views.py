@@ -10,7 +10,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 # from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.cache import cache
-from django.http import HttpResponse, HttpRequest, HttpResponseRedirect
+from django.http import HttpResponse, HttpRequest, HttpResponseRedirect, QueryDict
 from django.shortcuts import render, redirect
 from django.urls import reverse
 # from django.views.generic import TemplateView
@@ -58,7 +58,9 @@ def login_view(request):
     ):
         next_url = '/'
 
-    return redirect(f"{oidc_login_url}?next={next_url}")
+    params = QueryDict('', mutable=True)
+    params['next'] = next_url
+    return redirect(f"{oidc_login_url}?{params.urlencode()}")
 
 
 def logout_view(request):
