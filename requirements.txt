@@ -10,7 +10,7 @@ charset-normalizer==3.5.2
 cloudpickle==3.1.2
 cryptography==50.0.2
 dedupmarcxml==1.2.2
-Django==6.1.2
+Django==5.2.18
 dnspython==2.9.1
 et_xmlfile==2.0.0
 idna==3.20
