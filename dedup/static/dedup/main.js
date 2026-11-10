@@ -6,6 +6,10 @@
 /* Constants */
 /*************/
 
+const appElement = document.getElementById('app');
+const csrf_token = appElement.dataset.csrfToken;
+const col_name = appElement.dataset.colName;
+
 /*
 List of fields of local records
 This list change according to the metadata
@@ -225,7 +229,7 @@ const app = Vue.createApp({
       nbTotalRecs: null,
       trainingDataMessage: null,
       selectedModel: 'mean',
-      col_name: col_name, // column name is defined in the template
+      col_name: col_name, // collection name is provided by the page
     }
   },
   computed: {
@@ -342,7 +346,7 @@ const app = Vue.createApp({
     defineMatchingRecord(index) {
       fetch(`/dedup/col/${col_name}/locrec/${this.selectedLocRecid}`, {
         method: 'POST',
-        headers: {"X-CSRFToken": csrf_token}, // csrf_token is a global variable and required for POST requests
+        headers: {"X-CSRFToken": csrf_token}, // CSRF token is required for POST requests
         body: JSON.stringify({'matched_record': this.selectedLocRec.possible_matches[index].rec_id})
       })
       .then(response => response.json())
@@ -357,7 +361,7 @@ const app = Vue.createApp({
     cancelMatchingRecord() {
       fetch(`/dedup/col/${col_name}/locrec/${this.selectedLocRecid}`, {
         method: 'POST',
-        headers: {"X-CSRFToken": csrf_token}, // csrf_token is a global variable and required for POST requests
+        headers: {"X-CSRFToken": csrf_token}, // CSRF token is required for POST requests
         body: JSON.stringify({'matched_record': null})
       })
       .then(() => {
@@ -371,7 +375,7 @@ const app = Vue.createApp({
     addToTrainingData(ismatch) {
       fetch(`/dedup/training/add`, {
         method: 'POST',
-        headers: {"X-CSRFToken": csrf_token}, // csrf_token is a global variable and required for POST requests
+        headers: {"X-CSRFToken": csrf_token}, // CSRF token is required for POST requests
         body: JSON.stringify({'ext_nz_recid': this.selectedLocRec.possible_matches[this.selectedExtNzRecRank].rec_id,
                               'local_recid': this.selectedLocRecid,
                               'col_name': col_name,
@@ -546,3 +550,4 @@ const app = Vue.createApp({
   </div>`
 });
 
+app.mount(appElement);

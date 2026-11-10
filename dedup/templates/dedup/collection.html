@@ -4,16 +4,13 @@
   <head>
     <title>SLSP dedup tool: collections</title>
     <link rel="shortcut icon" type="image/png" href="{% static 'favicon.png' %}" >
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'dedup/style.css' %}">
-    <script src="https://unpkg.com/vue@3.2.29/dist/vue.global.js"></script>
+    <script src="{% static 'vendor/vue/vue.global.prod.js' %}"></script>
   </head>
   <body>
-    <div class="container-fluid" id="app">
+    <div class="container-fluid" id="app" data-col-name="{{ col_name }}" data-csrf-token="{{ csrf_token }}">
     </div>
     <script src="{% static 'dedup/main.js' %}"></script>
-    <script>csrf_token = "{{ csrf_token }}";</script>
-    <script>col_name = "{{ col_name }}";</script>
-    <script>app.mount('#app')</script>
   </body>
 </html>

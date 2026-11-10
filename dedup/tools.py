@@ -16,6 +16,7 @@ from lxml import etree
 from dedupmarcxml import RawBriefRec, JsonBriefRec, XmlBriefRec
 from collections import Counter
 from django.http import HttpRequest
+from django.utils.html import escape
 
 
 def json_to_marc(rec: Dict) -> str:
@@ -39,19 +40,19 @@ def json_to_marc(rec: Dict) -> str:
 
     # We store the displayable data in a list
     new_data = list()
-    new_data.append(f'<strong>LDR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</strong>{data["leader"]}')
+    new_data.append(f'<strong>LDR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</strong>{escape(data["leader"])}')
     for f_num in data:
         # Controlfields
         if f_num.startswith('00'):
-            new_data.append(f'<strong>{f_num}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</strong> {data[f_num]}')
+            new_data.append(f'<strong>{escape(f_num)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</strong> {escape(data[f_num])}')
 
         # Datafields
         elif re.match(r'^\d{3}$', f_num):
             for field in data[f_num]:
                 # Subfields
-                subfields = ' '.join([[f'<strong>$${f}</strong> {subfield[f]}' for f in subfield][0] for subfield in field["sub"]])
+                subfields = ' '.join([[f'<strong>$${escape(f)}</strong> {escape(subfield[f])}' for f in subfield][0] for subfield in field["sub"]])
 
-                new_data.append(f'<strong>{f_num}&nbsp;{field["ind1"]}&nbsp;{field["ind2"]}&nbsp;</strong> {subfields}')
+                new_data.append(f'<strong>{escape(f_num)}&nbsp;{escape(field["ind1"])}&nbsp;{escape(field["ind2"])}&nbsp;</strong> {subfields}')
 
     # At the end we join the data and return it
     new_data = '<br>'.join(sorted(new_data, key=lambda k: 0 if k.startswith('<strong>LDR') else int(k[8:11])))
