@@ -6,13 +6,14 @@ import requests
 from almapiwrapper import ApiKeys
 from almapiwrapper.config import Letter
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.http import Http404
 
 # from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.cache import cache
 from django.http import HttpResponse, HttpRequest
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 # from django.views.generic import TemplateView
 from pymongo import MongoClient, DESCENDING
@@ -296,3 +297,19 @@ def toggle_one_login_token_letter(request: HttpRequest) -> HttpResponse:
 
     # letter = Letter('LoginUsingOneTimeTokenLetter', 'NZ', 'P')
     # return HttpResponse(f"One login token letter is enabled: {letter.enabled}")
+
+def dev_login(request: HttpRequest) -> HttpResponse:
+    """
+    This view is only available in DEBUG mode and if ENABLE_DEV_LOGIN is set to True in settings. It allows developers
+    to log in as a specific user for testing purposes.
+    """
+    if not settings.DEBUG or not getattr(settings, "ENABLE_DEV_LOGIN", False):
+        raise Http404
+
+    user = get_object_or_404(
+        get_user_model(),
+        username="slsp_admin",
+        is_active=True,
+    )
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return redirect("index")

@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, reverse, redirect
 from pymongo import MongoClient
-from django.utils.http import url_has_allowed_host_and_scheme
+# from django.utils.http import url_has_allowed_host_and_scheme
 
 from almapiwrapper.config import Library
 from almapiwrapper.users import User, NewUser, fetch_users, fetch_user_in_all_iz

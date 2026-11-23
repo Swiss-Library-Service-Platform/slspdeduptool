@@ -48,3 +48,7 @@ urlpatterns += [
     path('toggle_one_login_token_letter/', views.toggle_one_login_token_letter, name='toggle_one_login_token_letter'),
     # path("api_threshold/", views.api_threshold_probe, name="api_threshold_probe"),
 ]
+
+if settings.DEBUG and getattr(settings, "ENABLE_DEV_LOGIN", False):
+    urlpatterns += [path("dev-login/", views.dev_login, name="dev_login")]
+print(urlpatterns)

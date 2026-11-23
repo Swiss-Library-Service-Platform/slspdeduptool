@@ -203,7 +203,8 @@ const SelectEvaluationModel = {
       modelOptions: ['mean',
                      'random_forest_general',
                      'random_forest_book',
-                     'random_forest_music'],
+                     'random_forest_music',
+                     'mlp_book'],
       modelSelected: 'mean' // default
   }},
   emits: ["defineEvaluationModel"],
