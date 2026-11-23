@@ -69,7 +69,7 @@
                             <li class="list-group-item px-0">
                                 <div class="d-flex justify-content-between align-items-center gap-2">
                                     <span class="text-break">{{ primary_id }}</span>
-                                    <form method="post" class="m-0" onsubmit="return confirm('Delete ' + '{{ primary_id }}' + ' ?');">
+                                    <form method="post" class="m-0" data-confirm-delete>
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="delete_primary_id" value="{{ primary_id }}">
@@ -85,6 +85,6 @@
         </div>
     </main>
 </div>
-<script>csrf_token = "{{ csrf_token }}";</script>
+<script src="{% static 'slspstafftool/manage_slsp_alma_accounts.js' %}"></script>
 </body>
  </html>
